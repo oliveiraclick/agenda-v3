@@ -36,9 +36,6 @@ import CustomerProfile from './views/CustomerProfile';
 import AdminDashboard from './views/AdminDashboard';
 import HelpCenter from './views/HelpCenter';
 
-// Public Storefront
-import PublicStorefront from './views/PublicStorefront';
-
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -49,27 +46,74 @@ const App: React.FC = () => {
   const [adminView, setAdminView] = useState<AdminView>('dashboard');
   const [signupRole, setSignupRole] = useState<'owner' | 'customer'>('customer');
   const [showHelp, setShowHelp] = useState(false);
-  const [selectedSalon, setSelectedSalon] = useState<any>(null);
-  const [publicSlug, setPublicSlug] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Detect hash-based public salon routing
-  useEffect(() => {
-    const checkHash = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/') && hash.length > 2) {
-        const slug = hash.substring(2); // Remove '#/'
-        setPublicSlug(slug);
+  const checkUserRole = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('id', userId)
+        .single();
+
+      if (profile) {
+        if (profile.role === 'owner') {
+          setCurrentRole('owner');
+          setOwnerView('overview');
+        } else {
+          setCurrentRole('customer');
+          setCustomerView('portal');
+        }
       } else {
-        setPublicSlug(null);
+        // Usuário sem perfil -> Cadastro de detalhes
+        setCustomerView('auth_register');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar role:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Check inicial (para não piscar a tela de login se já estiver logado)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        checkUserRole(session.user.id);
+      } else {
+        setIsLoading(false);
+        setCustomerView('login');
       }
     };
 
-    checkHash();
-    window.addEventListener('hashchange', checkHash);
-    return () => window.removeEventListener('hashchange', checkHash);
+    checkSession();
+
+    // 2. Escuta mudanças na sessão (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        console.log("Usuário logado:", session.user.id);
+        checkUserRole(session.user.id);
+      } else {
+        console.log("Usuário deslogado");
+        setCurrentRole('customer');
+        setCustomerView('login');
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // ... existing code ...
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white view-transition">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-brand"></div>
+      </div>
+    );
+  }
+
+  if (showHelp) return <HelpCenter onBack={() => setShowHelp(false)} />;
 
   const renderOwnerView = () => {
     switch (ownerView) {
@@ -88,6 +132,7 @@ const App: React.FC = () => {
     switch (proView) {
       case 'agenda': return <ProfessionalAgenda />;
       case 'commissions': return <ProfessionalCommissions />;
+      case 'profile': return <CustomerProfile onBack={() => setProView('agenda')} />;
       default: return <ProfessionalAgenda />;
     }
   };
@@ -101,29 +146,15 @@ const App: React.FC = () => {
       case 'auth_register': return <CustomerRegister onComplete={() => setCustomerView('portal')} />;
       case 'forgot_password': return <AuthForgotPassword onBack={() => setCustomerView('login')} />;
       case 'portal': return <CustomerPortal onNavigate={setCustomerView} />;
-      case 'discovery': return <SalonDiscovery onSelectSalon={(salon) => { setSelectedSalon(salon); setCustomerView('booking'); }} onProfile={() => setCustomerView('profile')} />;
+      case 'discovery': return <SalonDiscovery onSelectSalon={() => setCustomerView('booking')} onProfile={() => setCustomerView('profile')} />;
       case 'favorites': return <CustomerFavorites onBack={() => setCustomerView('portal')} />;
       case 'history': return <CustomerHistory onBack={() => setCustomerView('portal')} />;
-      case 'profile': return <CustomerProfile onBack={() => setCustomerView('portal')} onLogout={() => setCustomerView('login')} />;
-      case 'booking': return <CustomerBookingWizard salon={selectedSalon} onLoyalty={() => setCustomerView('loyalty')} onBack={() => setCustomerView('discovery')} />;
+      case 'profile': return <CustomerProfile onBack={() => setCustomerView('portal')} />;
+      case 'booking': return <CustomerBookingWizard onLoyalty={() => setCustomerView('loyalty')} onBack={() => setCustomerView('discovery')} />;
       case 'loyalty': return <CustomerLoyalty onBack={() => setCustomerView('portal')} />;
       default: return <CustomerPortal onNavigate={setCustomerView} />;
     }
   };
-
-  // If accessing a public storefront URL, render it
-  if (publicSlug) {
-    return (
-      <PublicStorefront
-        slug={publicSlug}
-        onBookService={(serviceId) => {
-          // Redirect to login/signup for booking
-          window.location.hash = '';
-          setCustomerView('login');
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col relative bg-background-light dark:bg-background-dark overflow-x-hidden">
@@ -177,7 +208,7 @@ const App: React.FC = () => {
         </nav>
       )}
 
-      {currentRole === 'customer' && !['onboarding', 'login', 'signup_choice', 'signup', 'forgot_password', 'auth_register', 'booking'].includes(customerView) && (
+      {currentRole === 'customer' && !['onboarding', 'login', 'signup_choice', 'signup', 'forgot_password', 'auth_register'].includes(customerView) && (
         <nav className="fixed bottom-6 left-4 right-4 bg-[#191022]/90 backdrop-blur-lg rounded-full shadow-2xl p-1 z-50 border border-white/10 max-w-md mx-auto h-16">
           <div className="flex justify-between items-center h-full px-2">
             <button onClick={() => setCustomerView('portal')} className={`flex-1 flex justify-center items-center py-3 rounded-full ${customerView === 'portal' ? 'bg-primary-customer text-white' : 'text-gray-400'}`}>

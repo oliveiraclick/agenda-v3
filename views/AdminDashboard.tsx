@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminView } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
    currentView: AdminView;
@@ -8,6 +9,30 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate }) => {
+   const [stats, setStats] = useState({ activeSaloons: 0, totalUsers: 0, mrr: 0 });
+
+   useEffect(() => {
+      const loadStats = async () => {
+         // Conta Salões (Establishments)
+         const { count: saloonsCount } = await supabase
+            .from('establishments')
+            .select('*', { count: 'exact', head: true });
+
+         // Conta Usuários (Profiles)
+         const { count: usersCount } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'customer');
+
+         setStats({
+            activeSaloons: saloonsCount || 0,
+            totalUsers: usersCount || 0,
+            mrr: 125400 // Mockado
+         });
+      };
+      loadStats();
+   }, []);
+
    return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white flex flex-col max-w-md mx-auto pb-24">
          <header className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 border-b dark:border-slate-800">
@@ -31,13 +56,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                <div className="bg-white dark:bg-[#232f48] p-4 rounded-2xl shadow-sm border dark:border-slate-800">
                   <span className="material-symbols-outlined text-primary text-xl mb-1">storefront</span>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Salões Ativos</p>
-                  <p className="text-2xl font-bold mt-1">452</p>
+                  <p className="text-2xl font-bold mt-1">{stats.activeSaloons}</p>
                   <p className="text-[10px] font-bold text-emerald-500 mt-1">+5% vs mês ant.</p>
                </div>
                <div className="bg-white dark:bg-[#232f48] p-4 rounded-2xl shadow-sm border dark:border-slate-800">
                   <span className="material-symbols-outlined text-purple-500 text-xl mb-1">group</span>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Usuários</p>
-                  <p className="text-2xl font-bold mt-1">15.3k</p>
+                  <p className="text-2xl font-bold mt-1">{stats.totalUsers}</p>
                   <p className="text-[10px] font-bold text-emerald-500 mt-1">+1.2%</p>
                </div>
             </div>

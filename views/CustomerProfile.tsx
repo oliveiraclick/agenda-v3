@@ -1,66 +1,180 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { uploadFile } from '../lib/upload';
 
 interface CustomerProfileProps {
-  onBack: () => void;
+   onBack: () => void;
+   onLogout: () => void;
 }
 
-const CustomerProfile: React.FC<CustomerProfileProps> = ({ onBack }) => {
-  return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white flex flex-col pb-32 max-w-md mx-auto">
-      <header className="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 flex items-center justify-between border-b dark:border-slate-800">
-        <button onClick={onBack} className="size-10 flex items-center justify-center"><span className="material-symbols-outlined">arrow_back_ios_new</span></button>
-        <h2 className="font-bold text-lg">Meu Perfil</h2>
-        <button className="text-primary font-bold">Editar</button>
-      </header>
+const CustomerProfile: React.FC<CustomerProfileProps> = ({ onBack, onLogout }) => {
+   const [profile, setProfile] = useState<any>(null);
+   const [loading, setLoading] = useState(true);
+   const [editing, setEditing] = useState(false);
 
-      <main className="p-6 space-y-8 overflow-y-auto">
-        <div className="flex flex-col items-center gap-4">
-           <div className="relative">
-              <div className="size-28 rounded-full bg-cover shadow-xl ring-4 ring-slate-100 dark:ring-surface-dark" style={{ backgroundImage: 'url("https://picsum.photos/seed/profile/200")' }}></div>
-              <div className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full border-4 border-background-dark"><span className="material-symbols-outlined text-[18px]">photo_camera</span></div>
-           </div>
-           <div className="text-center"><h1 className="text-2xl font-bold">Ana Silva</h1><p className="text-sm text-gray-500">Cliente desde 2023</p></div>
-        </div>
+   // Estados de Edição
+   const [name, setName] = useState('');
+   const [phone, setPhone] = useState('');
 
-        <div className="grid grid-cols-3 gap-3">
-           {[ { i: 'favorite', l: 'Favoritos', c: 'text-red-500' }, { i: 'history', l: 'Histórico', c: 'text-primary' }, { i: 'card_membership', l: 'Fidelidade', c: 'text-amber-500' } ].map((btn, idx) => (
-             <button key={idx} className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-surface-dark rounded-2xl shadow-sm border dark:border-slate-800 active:scale-95 transition-all">
-                <div className={`p-3 rounded-full bg-slate-50 dark:bg-slate-800 ${btn.c}`}><span className="material-symbols-outlined">{btn.i}</span></div>
-                <span className="text-[10px] font-bold">{btn.l}</span>
-             </button>
-           ))}
-        </div>
+   useEffect(() => {
+      fetchProfile();
+   }, []);
 
-        <section className="space-y-4">
-           <h3 className="font-bold text-lg px-1">Informações Pessoais</h3>
-           <div className="bg-white dark:bg-surface-dark rounded-2xl border dark:border-slate-800 overflow-hidden divide-y dark:divide-slate-800">
-              <div className="p-4 flex justify-between items-center">
-                 <div className="flex items-center gap-4"><span className="material-symbols-outlined text-gray-400">person</span><div><p className="text-[10px] uppercase font-bold text-gray-400">Nome</p><p className="font-medium">Ana Silva</p></div></div>
-                 <span className="material-symbols-outlined text-gray-400">chevron_right</span>
-              </div>
-              <div className="p-4 flex justify-between items-center">
-                 <div className="flex items-center gap-4"><span className="material-symbols-outlined text-gray-400">mail</span><div><p className="text-[10px] uppercase font-bold text-gray-400">E-mail</p><p className="font-medium">ana.silva@email.com</p></div></div>
-                 <span className="material-symbols-outlined text-gray-400">chevron_right</span>
-              </div>
-           </div>
-        </section>
+   const fetchProfile = async () => {
+      setLoading(true);
+      try {
+         const { data: { user } } = await supabase.auth.getUser();
+         if (user) {
+            const { data, error } = await supabase
+               .from('profiles')
+               .select('*')
+               .eq('id', user.id)
+               .maybeSingle();
 
-        <section className="space-y-4">
-           <h3 className="font-bold text-lg px-1">Configurações</h3>
-           <div className="bg-white dark:bg-surface-dark rounded-2xl border dark:border-slate-800 overflow-hidden">
-              <div className="p-4 flex justify-between items-center">
-                 <div className="flex items-center gap-4"><span className="material-symbols-outlined text-gray-400">notifications</span><p className="font-medium">Notificações</p></div>
-                 <div className="w-11 h-6 bg-primary rounded-full relative p-0.5"><div className="size-5 bg-white rounded-full ml-auto shadow-sm" /></div>
-              </div>
-              <button className="w-full p-4 flex items-center gap-4 text-red-500 border-t dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
-                 <span className="material-symbols-outlined">logout</span><span className="font-medium">Sair da conta</span>
-              </button>
-           </div>
-        </section>
-      </main>
-    </div>
-  );
+            if (data) {
+               setProfile(data);
+               setName(data.name || '');
+               setPhone(data.phone || '');
+            }
+         }
+      } catch (error) {
+         console.error("Erro ao carregar perfil:", error);
+      } finally {
+         setLoading(false);
+      }
+   };
+
+   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+         setLoading(true);
+         try {
+            const { publicUrl, error } = await uploadFile(file, 'avatars');
+            if (error) throw error;
+
+            if (publicUrl) {
+               const { data: { user } } = await supabase.auth.getUser();
+
+               const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({ avatar_url: publicUrl })
+                  .eq('id', user?.id);
+
+               if (updateError) throw updateError;
+
+               setProfile({ ...profile, avatar_url: publicUrl });
+               alert("Foto atualizada com sucesso!");
+            }
+         } catch (err: any) {
+            alert("Erro ao atualizar foto: " + err.message);
+         } finally {
+            setLoading(false);
+         }
+      }
+   };
+
+   const handleSave = async () => {
+      setLoading(true);
+      try {
+         const { data: { user } } = await supabase.auth.getUser();
+         const { error } = await supabase
+            .from('profiles')
+            .update({ name, phone })
+            .eq('id', user?.id);
+
+         if (error) throw error;
+
+         setProfile({ ...profile, name, phone });
+         setEditing(false);
+         alert("Perfil atualizado!");
+      } catch (err: any) {
+         alert("Erro ao salvar: " + err.message);
+      } finally {
+         setLoading(false);
+      }
+   };
+
+   const handleLogout = async () => {
+      await supabase.auth.signOut();
+      onLogout();
+   };
+
+   if (loading && !profile) return <div className="p-10 text-center font-bold">Carregando...</div>;
+
+   return (
+      <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto">
+         <header className="p-6 bg-white flex items-center justify-between border-b">
+            <button onClick={onBack} className="size-10 rounded-full bg-slate-100 flex items-center justify-center">
+               <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h2 className="font-black text-lg tracking-tighter">Meu Perfil</h2>
+            <button
+               onClick={() => editing ? handleSave() : setEditing(true)}
+               className="text-primary-brand font-bold text-sm"
+            >
+               {editing ? 'Salvar' : 'Editar'}
+            </button>
+         </header>
+
+         <main className="p-6 space-y-8">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center gap-4">
+               <label className="relative cursor-pointer group">
+                  <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                  <div className="size-32 rounded-[3rem] bg-slate-200 border-4 border-white shadow-xl flex items-center justify-center overflow-hidden relative group-hover:ring-4 group-hover:ring-primary-brand/20 transition-all">
+                     {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} className="w-full h-full object-cover" />
+                     ) : (
+                        <span className="material-symbols-outlined text-5xl text-slate-400">person</span>
+                     )}
+
+                     {/* Overlay de Edição */}
+                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-sm">
+                        <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                     </div>
+                  </div>
+               </label>
+               <p className="text-xs font-black uppercase text-slate-400 tracking-widest">Toque para alterar</p>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+               <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nome Completo</label>
+                  <input
+                     disabled={!editing}
+                     value={name}
+                     onChange={e => setName(e.target.value)}
+                     className={`w-full p-4 rounded-2xl border-none font-bold ${editing ? 'bg-white ring-2 ring-primary-brand shadow-md' : 'bg-slate-100 text-slate-500'}`}
+                  />
+               </div>
+
+               <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Telemóvel</label>
+                  <input
+                     disabled={!editing}
+                     value={phone}
+                     onChange={e => setPhone(e.target.value)}
+                     className={`w-full p-4 rounded-2xl border-none font-bold ${editing ? 'bg-white ring-2 ring-primary-brand shadow-md' : 'bg-slate-100 text-slate-500'}`}
+                  />
+               </div>
+            </div>
+
+            {/* Logout Button */}
+            <div className="pt-10">
+               <button
+                  onClick={handleLogout}
+                  className="w-full py-5 rounded-2xl bg-red-50 text-red-500 font-black flex items-center justify-center gap-2 hover:bg-red-100 transition-colors"
+               >
+                  <span className="material-symbols-outlined">logout</span>
+                  Sair da Conta
+               </button>
+               <p className="text-center text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest">Versão 1.0.2 - App Agenda</p>
+            </div>
+         </main>
+      </div>
+   );
 };
 
 export default CustomerProfile;

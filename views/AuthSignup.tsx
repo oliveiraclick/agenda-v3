@@ -1,100 +1,267 @@
-
-import React from 'react';
+import React, { useState } from 'react';
+import Logo from '../components/Logo';
+import { supabase } from '../lib/supabase';
 
 interface AuthSignupProps {
-  onBack: () => void;
-  onComplete: () => void;
+   onBack: () => void;
+   onComplete: () => void;
+   role?: 'owner' | 'customer';
 }
 
-const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete }) => {
-  return (
-    <div className="min-h-screen bg-background-light text-slate-900 flex flex-col p-6 max-w-md mx-auto relative overflow-hidden view-transition">
-      {/* Background Decorativo Sutil */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 size-64 bg-primary-brand/5 rounded-full blur-3xl pointer-events-none" />
+const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'customer' }) => {
+   const [name, setName] = useState('');
+   const [email, setEmail] = useState('');
+   const [password, setPassword] = useState('');
+   const [showPassword, setShowPassword] = useState(false);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState('');
+   const [success, setSuccess] = useState(false);
+   const [successMessage, setSuccessMessage] = useState('');
 
-      {/* Top App Bar */}
-      <header className="flex items-center justify-between mb-10 z-10">
-         <button onClick={onBack} className="size-11 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100 active:scale-90 transition-transform">
-            <span className="material-symbols-outlined text-slate-900">arrow_back</span>
-         </button>
-         <h2 className="font-bold text-slate-900 text-base">Criar Conta</h2>
-         <button className="size-11 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100">
-            <span className="material-symbols-outlined text-slate-900">person</span>
-         </button>
-      </header>
+   const handleSignup = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!email || !password || !name) {
+         setError('Preencha todos os campos.');
+         return;
+      }
 
-      <main className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-10 z-10">
-         {/* Ícone Central e Headline */}
-         <div className="text-center space-y-6">
-            <div className="mx-auto size-20 bg-white rounded-3xl flex items-center justify-center shadow-card border border-slate-50">
-               <span className="material-symbols-outlined text-4xl text-primary-brand font-light">business_center</span>
+      setLoading(true);
+      setError('');
+
+      try {
+         // 1. Criar usuário no Auth com metadados de Role
+         let authData;
+         let authError;
+
+         // Timeout de segurança (15 segundos)
+         const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Tempo limite excedido. Verifique sua conexão.')), 15000)
+         );
+
+         const signUpPromise = supabase.auth.signUp({
+            email,
+            password,
+            options: {
+               data: {
+                  name: name,
+                  role: role,
+               }
+            }
+         });
+
+         const signUpResponse = await Promise.race([signUpPromise, timeoutPromise]) as any;
+
+         authData = signUpResponse.data;
+         authError = signUpResponse.error;
+
+         // TRATAMENTO ESPECIAL: Usuário já existe (Auto-Login)
+         if (authError && authError.message.includes('already registered')) {
+            const signInResponse = await supabase.auth.signInWithPassword({
+               email,
+               password
+            });
+
+            if (signInResponse.error) {
+               throw new Error('Conta já existe. Se for você, faça login.');
+            }
+
+            authData = signInResponse.data;
+            authError = null;
+         }
+
+         if (authError) throw authError;
+
+         const data = authData;
+
+         // CASO 1: Confirmação de E-mail Necessária (Sem Sessão)
+         if (data.user && !data.session) {
+            setSuccessMessage('Verifique seu e-mail para confirmar o cadastro.');
+            setSuccess(true);
+            return;
+         }
+
+         if (data.user) {
+            // 2. Criar o perfil na tabela pública imediatamente
+            const { error: profileError } = await supabase
+               .from('profiles')
+               .upsert({
+                  id: data.user.id,
+                  name: name,
+                  role: role,
+                  email: email,
+                  updated_at: new Date(),
+               });
+
+            if (profileError) {
+               console.error("Erro no Profile:", profileError.message);
+               // Não lança erro fatal se for apenas RLS impedindo leitura, mas loga
+            }
+
+            // 3. Login Explícito (Garantia)
+            if (data.session) {
+               await supabase.auth.signInWithPassword({ email, password });
+            }
+
+            // Sucesso!
+            if (role === 'owner') {
+               setSuccessMessage('Sua conta empresarial foi criada com sucesso!');
+               setSuccess(true);
+            } else {
+               onComplete();
+            }
+         }
+      } catch (err: any) {
+         setError(err.message || 'Erro ao criar conta.');
+      } finally {
+         setLoading(false);
+      }
+   };
+
+   if (success) {
+      return (
+         <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white animate-in fade-in">
+            <div className="size-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
+               <span className="material-symbols-outlined text-5xl text-green-600">check_circle</span>
             </div>
-            
-            <div className="space-y-3 px-2">
-               <h1 className="text-[32px] font-black leading-tight tracking-tighter text-slate-900">
-                  Sua Gestão em um só lugar
-               </h1>
-               <p className="text-slate-400 font-medium leading-relaxed px-4">
-                  Gerencie sua agenda, profissionais e clientes. Comece agora gratuitamente.
-               </p>
-            </div>
-         </div>
-
-         {/* Form Section */}
-         <div className="space-y-5 pt-2">
-            <div className="space-y-2">
-               <label className="text-sm font-bold text-slate-900 ml-1">Nome do Negócio</label>
-               <div className="relative flex items-center group">
-                  <input 
-                     className="w-full bg-white border border-slate-200 py-4 pl-5 pr-14 rounded-2xl focus:ring-2 focus:ring-primary-brand focus:border-primary-brand text-slate-900 font-medium placeholder:text-slate-300 shadow-sm transition-all" 
-                     placeholder="Ex: Estúdio Alpha ou Seu Nome" 
-                  />
-                  <span className="absolute right-5 material-symbols-outlined text-slate-300">storefront</span>
-               </div>
-            </div>
-
-            <div className="space-y-2">
-               <label className="text-sm font-bold text-slate-900 ml-1">E-mail Profissional</label>
-               <div className="relative flex items-center group">
-                  <input 
-                     className="w-full bg-white border border-slate-200 py-4 pl-5 pr-14 rounded-2xl focus:ring-2 focus:ring-primary-brand focus:border-primary-brand text-slate-900 font-medium placeholder:text-slate-300 shadow-sm transition-all" 
-                     placeholder="seu@negocio.com" 
-                     type="email"
-                  />
-                  <span className="absolute right-5 material-symbols-outlined text-slate-300">mail</span>
-               </div>
-            </div>
-
-            <div className="space-y-2">
-               <label className="text-sm font-bold text-slate-900 ml-1">Senha</label>
-               <div className="relative flex items-center group">
-                  <input 
-                     className="w-full bg-white border border-slate-200 py-4 pl-5 pr-14 rounded-2xl focus:ring-2 focus:ring-primary-brand focus:border-primary-brand text-slate-900 font-medium placeholder:text-slate-300 shadow-sm transition-all" 
-                     placeholder="Mínimo 8 caracteres" 
-                     type="password"
-                  />
-                  <span className="absolute right-5 material-symbols-outlined text-slate-300 cursor-pointer">visibility_off</span>
-               </div>
-            </div>
-         </div>
-
-         {/* Botão de Ação */}
-         <div className="pt-6 space-y-8">
-            <button 
-               onClick={onComplete} 
-               className="w-full bg-primary-brand py-5 rounded-[2rem] text-white font-black text-lg shadow-red-glow flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
-            >
-               Criar Conta Grátis
-               <span className="material-symbols-outlined font-black">arrow_forward</span>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Sucesso!</h2>
+            <p className="text-slate-500 text-center mb-8">{successMessage}</p>
+            <button onClick={onComplete} className="w-full max-w-xs bg-primary-owner text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-owner/30">
+               {successMessage.includes('e-mail') ? 'Voltar ao Login' : 'Acessar Painel'}
             </button>
-
-            <p className="text-center text-sm text-slate-400 font-medium pb-4">
-               Já tem uma conta? <button onClick={onBack} className="text-slate-900 font-black hover:text-primary-brand transition-colors">Entrar</button>
-            </p>
          </div>
-      </main>
-    </div>
-  );
+      );
+   }
+
+   return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#F8FAFC]">
+         {/* Background Gradients & Blobs */}
+         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+            <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-primary-brand/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '1s' }} />
+         </div>
+
+         <button onClick={onBack} className="absolute top-6 left-6 size-12 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white hover:shadow-lg transition-all z-20 group border border-white/50">
+            <span className="material-symbols-outlined text-slate-400 group-hover:text-primary-brand transition-colors">arrow_back</span>
+         </button>
+
+         <div className="w-full max-w-md mx-auto relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="bg-white/70 backdrop-blur-2xl rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-white/50 p-8">
+               <div className="text-center mb-8">
+                  <div className="inline-flex p-4 bg-white rounded-3xl shadow-lg shadow-primary-brand/10 mb-6 animate-in zoom-in duration-700">
+                     <Logo size={60} />
+                  </div>
+                  <h1 className="text-2xl font-black tracking-tighter text-slate-900 mb-2">
+                     {role === 'owner' ? 'Sua empresa no mapa' : 'Crie sua conta'}
+                  </h1>
+                  <p className="text-slate-500 font-medium text-sm">
+                     {role === 'owner'
+                        ? 'Gerencie seus agendamentos e cresça seu negócio.'
+                        : 'Agende serviços em segundos nos melhores locais.'}
+                  </p>
+               </div>
+
+               <form onSubmit={handleSignup} className="space-y-5">
+                  <div className="space-y-2">
+                     <div className="relative group">
+                        <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                           <div className="flex items-center px-4">
+                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">
+                                 {role === 'owner' ? 'storefront' : 'person'}
+                              </span>
+                              <div className="flex-1 py-2">
+                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Nome Completo / Razão Social</label>
+                                 <input
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                                    placeholder="Ex: Barbearia do João"
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                     <div className="relative group">
+                        <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                           <div className="flex items-center px-4">
+                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">mail</span>
+                              <div className="flex-1 py-2">
+                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">E-mail Profissional</label>
+                                 <input
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                                    placeholder="empresa@email.com"
+                                 />
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                     <div className="relative group">
+                        <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                           <div className="flex items-center px-4">
+                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">lock</span>
+                              <div className="flex-1 py-2">
+                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Senha de Acesso</label>
+                                 <div className="flex items-center">
+                                    <input
+                                       type={showPassword ? 'text' : 'password'}
+                                       value={password}
+                                       onChange={e => setPassword(e.target.value)}
+                                       className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                                       placeholder="Mínimo 6 caracteres"
+                                    />
+                                    <button
+                                       type="button"
+                                       onClick={() => setShowPassword(!showPassword)}
+                                       className="text-slate-400 hover:text-primary-brand transition-colors"
+                                    >
+                                       <span className="material-symbols-outlined text-xl">
+                                          {showPassword ? 'visibility' : 'visibility_off'}
+                                       </span>
+                                    </button>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  {error && (
+                     <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center gap-3 animate-in slide-in-from-top-2">
+                        <div className="size-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                           <span className="material-symbols-outlined text-red-500 text-sm">priority_high</span>
+                        </div>
+                        <p className="text-red-500 text-xs font-bold">{error}</p>
+                     </div>
+                  )}
+
+                  <button
+                     type="submit"
+                     disabled={loading}
+                     className="w-full bg-gradient-to-r from-primary-brand to-rose-600 py-4 rounded-2xl text-white font-black text-lg shadow-lg shadow-primary-brand/30 hover:shadow-xl hover:shadow-primary-brand/40 hover:scale-[1.02] active:scale-95 transition-all mt-4 disabled:opacity-70 relative overflow-hidden group"
+                  >
+                     <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                     <span className="relative flex items-center justify-center gap-2">
+                        {loading ? (
+                           <span className="flex items-center justify-center gap-2">
+                              <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Criando conta...
+                           </span>
+                        ) : 'Criar Conta'}
+                     </span>
+                  </button>
+               </form>
+            </div>
+         </div>
+      </div>
+   );
 };
 
 export default AuthSignup;
