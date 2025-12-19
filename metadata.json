@@ -1,0 +1,8 @@
+{
+  "name": "Agende Mais - Mobile Platform",
+  "description": "A comprehensive mobile-first scheduling platform for business owners and customers, featuring booking wizards, daily agendas, and support centers.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
