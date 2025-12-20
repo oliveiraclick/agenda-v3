@@ -30,19 +30,19 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
 
   // Mock Data
   const services: Service[] = [
-    { id: 1, name: 'Corte Degrade', price: 45.00, duration: 45, description: 'Corte moderno com acabamento perfeito' },
-    { id: 2, name: 'Barba Terapia', price: 35.00, duration: 30, description: 'Toalha quente e massagem facial' },
-    { id: 3, name: 'Combo Completo', price: 75.00, duration: 75, description: 'Corte + Barba + Sobrancelha' }
+    { id: '1', name: 'Corte Degrade', price: 45.00, duration: '45', description: 'Corte moderno com acabamento perfeito', category: 'Cabelo' },
+    { id: '2', name: 'Barba Terapia', price: 35.00, duration: '30', description: 'Toalha quente e massagem facial', category: 'Barba' },
+    { id: '3', name: 'Combo Completo', price: 75.00, duration: '75', description: 'Corte + Barba + Sobrancelha', category: 'Combos' }
   ];
 
   const professionals: Professional[] = [
-    { id: 1, name: 'Carlos Silva', role: 'Barbeiro Master', image: 'https://i.pravatar.cc/150?u=1', performance: 5.0 },
-    { id: 2, name: 'André Santos', role: 'Especialista em Barba', image: 'https://i.pravatar.cc/150?u=2', performance: 4.9 }
+    { id: '1', name: 'Carlos Silva', role: 'Barbeiro Master', image: 'https://i.pravatar.cc/150?u=1', performance: 5.0, revenue: '0', commission_service: 0, commission_product: 0, status: 'active' },
+    { id: '2', name: 'André Santos', role: 'Especialista em Barba', image: 'https://i.pravatar.cc/150?u=2', performance: 4.9, revenue: '0', commission_service: 0, commission_product: 0, status: 'active' }
   ];
 
   const products: Product[] = [
-    { id: 1, name: 'Pomada Matte', brand: 'Barba Forte', price: 45.00, image: 'https://picsum.photos/seed/p1/200' },
-    { id: 2, name: 'Óleo para Barba', brand: 'Viking', price: 35.00, image: 'https://picsum.photos/seed/p2/200' }
+    { id: '1', name: 'Pomada Matte', brand: 'Barba Forte', price: 45.00, image: 'https://picsum.photos/seed/p1/200', cost: 20, stock: 10, category: 'Estilo', status: 'normal' },
+    { id: '2', name: 'Óleo para Barba', brand: 'Viking', price: 35.00, image: 'https://picsum.photos/seed/p2/200', cost: 15, stock: 15, category: 'Cuidados', status: 'normal' }
   ];
 
   const bookedSlots = ['10:00', '14:30'];
@@ -74,12 +74,36 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
 
   const handleBooking = async () => {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { error } = await supabase.from('appointments').insert({
+        user_id: user.id,
+        establishment_id: salon.id,
+        service_name: selectedService?.name,
+        professional_name: selectedPro?.name,
+        date: selectedDate,
+        time: selectedTime,
+        price: totalPrice,
+        status: 'scheduled'
+      });
+
+      if (error) throw error;
+
+      // Simulate success delay for UX
+      setTimeout(() => {
+        setLoading(false);
+        alert('Agendamento realizado com sucesso!');
+        onBack();
+      }, 1000);
+
+    } catch (error) {
+      console.error('Erro ao agendar:', error);
+      alert('Erro ao realizar agendamento. Tente novamente.');
       setLoading(false);
-      alert('Agendamento realizado com sucesso!');
-      onBack();
-    }, 2000);
+    }
   };
 
   return (
