@@ -8,17 +8,7 @@ interface CustomerPortalProps {
 }
 
 const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSalon }) => {
-   const [favorites, setFavorites] = useState<(string | number)[]>([]);
-   const [establishments, setEstablishments] = useState<any[]>([]);
-   const [appointments, setAppointments] = useState<any[]>([]); // New state
-   const [searchTerm, setSearchTerm] = useState('');
-   const [searchResults, setSearchResults] = useState<any[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [user, setUser] = useState<any>(null);
-
-   // Notifications
-   const [notifications, setNotifications] = useState<any[]>([]);
-   const [showNotifications, setShowNotifications] = useState(false);
+   const [lastVisit, setLastVisit] = useState<any>(null); // State for last visit
 
    // Initialize Data
    useEffect(() => {
@@ -63,16 +53,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
 
          console.log('Fetched establishments:', dbEstablishments);
 
+         let mappedEstablishments: any[] = [];
          if (dbEstablishments && dbEstablishments.length > 0) {
             // Map DB columns to UI props
-            const mapped = dbEstablishments.map(item => ({
+            mappedEstablishments = dbEstablishments.map(item => ({
                ...item,
-               image_url: item.image_url || 'https://picsum.photos/seed/shop/400/200', // Ensure image_url is available
-               image: item.image_url || 'https://picsum.photos/seed/shop/400/200', // Fallback image
+               image_url: item.image_url || 'https://picsum.photos/seed/shop/400/200',
+               image: item.image_url || 'https://picsum.photos/seed/shop/400/200',
                rating: item.rating || 5.0,
                type: item.category || 'Serviços'
             }));
-            setEstablishments(mapped);
+            setEstablishments(mappedEstablishments);
          } else {
             setEstablishments([]);
          }
@@ -107,6 +98,23 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                .gte('date', new Date().toISOString().split('T')[0]); // Only future/today
 
             if (appts) setAppointments(appts);
+
+            // Fetch Last Appointment for Rebooking Logic
+            const { data: lastAppt } = await supabase
+               .from('appointments')
+               .select('establishment_id, service_name, date')
+               .eq('user_id', user.id)
+               .order('created_at', { ascending: false })
+               .limit(1)
+               .single();
+
+            if (lastAppt && mappedEstablishments.length > 0) {
+               // Find the salon details for this appointment
+               const salon = mappedEstablishments.find(e => e.id === lastAppt.establishment_id);
+               if (salon) {
+                  setLastVisit({ ...lastAppt, salon });
+               }
+            }
          }
       } catch (e) {
          console.error('Error fetching data:', e);
@@ -290,14 +298,30 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                      <h3 className="font-bold text-lg text-slate-900 mb-4 px-1">Lembretes & Fidelidade</h3>
                      <div className="grid grid-cols-2 gap-3">
                         {/* Card de Reagendamento */}
-                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-5 rounded-[2rem] text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group cursor-pointer">
+                        <div
+                           onClick={() => {
+                              if (lastVisit?.salon) {
+                                 if (onSelectSalon) onSelectSalon(lastVisit.salon);
+                                 onNavigate('booking');
+                              } else {
+                                 // If no last visit, maybe allow searching or do nothing
+                                 const element = document.querySelector('input[type="text"]') as HTMLInputElement;
+                                 if (element) element.focus();
+                              }
+                           }}
+                           className="bg-gradient-to-br from-indigo-500 to-purple-600 p-5 rounded-[2rem] text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden group cursor-pointer"
+                        >
                            <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-110 transition-transform">
                               <span className="material-symbols-outlined text-5xl">update</span>
                            </div>
-                           <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-wider mb-1">Corte de Cabelo</p>
-                           <h4 className="font-black text-xl mb-4 leading-tight">Já faz 25 dias!</h4>
+                           <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                              {lastVisit ? lastVisit.service_name : 'Novo Agendamento'}
+                           </p>
+                           <h4 className="font-black text-xl mb-4 leading-tight">
+                              {lastVisit ? 'Agendar Novamente!' : 'Encontre um lugar'}
+                           </h4>
                            <button className="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-white/30 transition-colors">
-                              Reagendar <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                              {lastVisit ? 'Reagendar' : 'Buscar'} <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                            </button>
                         </div>
 
