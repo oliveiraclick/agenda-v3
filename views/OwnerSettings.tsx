@@ -16,6 +16,7 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [history, setHistory] = useState(''); // New State
   const [avatarUrl, setAvatarUrl] = useState('');
   const [slug, setSlug] = useState('');
   const [slugError, setSlugError] = useState('');
@@ -48,6 +49,7 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
       if (est) {
         setEstablishment(est);
         setSlug(est.slug || '');
+        setHistory(est.history || ''); // Fetch history
       }
     }
     setLoading(false);
@@ -70,9 +72,9 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
     // Update or create establishment with slug
     if (slug && !slugError) {
       const estUpdates = {
-        name,
         slug,
         description,
+        history, // Save history
         logo_url: avatarUrl,
         address_full: address,
         owner_id: profile.id
@@ -249,6 +251,16 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
               placeholder="Descreva seu negócio e especialidades..."
             />
           </div>
+        </section>
+
+        <section className="px-4 space-y-4">
+          <h3 className="font-bold text-lg text-slate-900">Nossa História</h3>
+          <textarea
+            value={history}
+            onChange={e => setHistory(e.target.value)}
+            className="w-full h-32 rounded-xl bg-white border-slate-200 focus:ring-primary-brand text-sm p-4 resize-none"
+            placeholder="Conte a história do seu salão, anos de tradição, etc..."
+          />
         </section>
 
         {/* Public Link Section */}
