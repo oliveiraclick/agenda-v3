@@ -1,5 +1,8 @@
+-- Drop table if exists to ensure schema update
+drop table if exists public.appointments;
+
 -- Create Appointments table
-create table if not exists public.appointments (
+create table public.appointments (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   user_id uuid references auth.users not null,

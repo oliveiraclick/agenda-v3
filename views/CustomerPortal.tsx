@@ -281,7 +281,6 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                         <div className="bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-[2rem] p-6 text-center">
                            <span className="material-symbols-outlined text-slate-300 text-4xl mb-2">event_busy</span>
                            <p className="text-slate-500 font-medium text-sm">Nenhum agendamento futuro.</p>
-                           <button onClick={() => { /* scroll to favorites or search */ }} className="mt-3 text-primary-brand text-xs font-bold uppercase tracking-wider hover:underline">Agendar Agora</button>
                         </div>
                      )}
                   </section>
