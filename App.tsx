@@ -100,7 +100,7 @@ const App: React.FC = () => {
       case 'signup': return <AuthSignup role={signupRole} onBack={() => setCustomerView('signup_choice')} onComplete={() => setCustomerView('portal')} />;
       case 'auth_register': return <CustomerRegister onComplete={() => setCustomerView('portal')} />;
       case 'forgot_password': return <AuthForgotPassword onBack={() => setCustomerView('login')} />;
-      case 'portal': return <CustomerPortal onNavigate={setCustomerView} />;
+      case 'portal': return <CustomerPortal onNavigate={setCustomerView} onSelectSalon={setSelectedSalon} />;
       case 'discovery': return <SalonDiscovery onSelectSalon={(salon) => { setSelectedSalon(salon); setCustomerView('booking'); }} onProfile={() => setCustomerView('profile')} />;
       case 'favorites': return <CustomerFavorites onBack={() => setCustomerView('portal')} />;
       case 'history': return <CustomerHistory onBack={() => setCustomerView('portal')} />;

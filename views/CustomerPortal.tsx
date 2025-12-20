@@ -4,9 +4,10 @@ import { supabase } from '../lib/supabase';
 
 interface CustomerPortalProps {
    onNavigate: (view: CustomerView) => void;
+   onSelectSalon?: (salon: any) => void; // New prop for selecting salon
 }
 
-const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
+const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSalon }) => {
    const [favorites, setFavorites] = useState<(string | number)[]>([]);
    const [establishments, setEstablishments] = useState<any[]>([]);
    const [searchTerm, setSearchTerm] = useState('');
@@ -238,7 +239,10 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
                   <div className="w-full space-y-4">
                      <h3 className="font-bold text-lg text-slate-900 text-left px-1">Sugestões para você</h3>
                      {establishments.map(est => (
-                        <div key={est.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center group cursor-pointer" onClick={() => onNavigate('booking')}>
+                        <div key={est.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center group cursor-pointer" onClick={() => {
+                           if (onSelectSalon) onSelectSalon(est);
+                           onNavigate('booking');
+                        }}>
                            <div className="size-20 rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${est.image}")` }}></div>
                            <div className="flex-1">
                               <h4 className="font-bold text-slate-900 text-base">{est.name}</h4>
@@ -273,7 +277,10 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
                      <p className="text-center text-slate-400 py-10">Nenhum resultado encontrado.</p>
                   ) : (
                      searchResults.map(est => (
-                        <div key={est.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center group cursor-pointer" onClick={() => onNavigate('booking')}>
+                        <div key={est.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center group cursor-pointer" onClick={() => {
+                           if (onSelectSalon) onSelectSalon(est);
+                           onNavigate('booking');
+                        }}>
                            <div className="size-20 rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${est.image}")` }}></div>
                            <div className="flex-1">
                               <h4 className="font-bold text-slate-900 text-base">{est.name}</h4>
@@ -305,7 +312,10 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
                      </div>
                      <div className="space-y-4">
                         {favoriteItems.map((fav) => (
-                           <div key={fav.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center cursor-pointer" onClick={() => onNavigate('booking')}>
+                           <div key={fav.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-card flex gap-4 items-center cursor-pointer" onClick={() => {
+                              if (onSelectSalon) onSelectSalon(fav); // Note: verify fav has all salon props
+                              onNavigate('booking');
+                           }}>
                               <div className="size-20 rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${fav.image}")` }}></div>
                               <div className="flex-1">
                                  <h4 className="font-bold text-slate-900 text-base">{fav.name}</h4>
