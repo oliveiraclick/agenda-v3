@@ -30,16 +30,20 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
          const { data: { user } } = await supabase.auth.getUser();
 
          if (user) {
-            // Fetch Profile Name explicitly to avoid "Visitante"
+            // Fetch Profile Name and Avatar explicitly to avoid stale auth data
             const { data: profile } = await supabase
                .from('profiles')
-               .select('name')
+               .select('name, avatar_url')
                .eq('id', user.id)
                .single();
 
             if (profile) {
-               // Merge profile name into user metadata for display
-               user.user_metadata = { ...user.user_metadata, name: profile.name };
+               // Merge profile data into user metadata for display
+               user.user_metadata = {
+                  ...user.user_metadata,
+                  name: profile.name,
+                  avatar_url: profile.avatar_url
+               };
             }
          }
 
