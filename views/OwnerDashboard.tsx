@@ -31,6 +31,12 @@ const OwnerDashboard: React.FC = () => {
     if (user) {
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(profileData);
+
+      // Fetch establishment for name
+      const { data: est } = await supabase.from('establishments').select('name').eq('owner_id', user.id).maybeSingle();
+      if (est) {
+        setProfile(prev => ({ ...prev, company_name: est.name }));
+      }
     }
 
     const { data: pros } = await supabase.from('professionals').select('*');
@@ -177,7 +183,7 @@ const OwnerDashboard: React.FC = () => {
               <div className="absolute bottom-0 right-0 size-3 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
             <div>
-              <h1 className="text-slate-900 text-lg font-bold leading-tight">Agenda Mestra</h1>
+              <h1 className="text-slate-900 text-lg font-bold leading-tight">{profile?.company_name || profile?.name || 'Agenda Mestra'}</h1>
               <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Visão Geral</p>
             </div>
           </div>
@@ -305,9 +311,8 @@ const OwnerDashboard: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="p-6 overflow-y-auto custom-scrollbar">
             <h2 className="text-lg font-bold mb-4">Novo Agendamento</h2>
             <div className="space-y-4">
               <input
@@ -368,8 +373,8 @@ const OwnerDashboard: React.FC = () => {
                         key={slot}
                         onClick={() => setNewAppointment({ ...newAppointment, time: slot })}
                         className={`py-2 rounded-xl text-xs font-bold transition-all ${newAppointment.time === slot
-                            ? 'bg-primary-brand text-white shadow-md'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:border-primary-brand'
+                          ? 'bg-primary-brand text-white shadow-md'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:border-primary-brand'
                           }`}
                       >
                         {slot}
@@ -388,15 +393,19 @@ const OwnerDashboard: React.FC = () => {
                   onChange={e => setNewAppointment({ ...newAppointment, price: Number(e.target.value) })}
                 />
               </div>
-
-              <button onClick={handleAddAppointment} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
-                Confirmar Agendamento
-              </button>
             </div>
           </div>
+
+          <div className="p-6 pt-2 bg-white border-t border-slate-50">
+            <button onClick={handleAddAppointment} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
+              Confirmar Agendamento
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+        </div>
+  )
+}
+    </div >
   );
 };
 

@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+import HelpCenter from './HelpCenter';
+
 interface OwnerMarketingProps {
   onBack: () => void;
 }
@@ -10,20 +12,43 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', description: '', discount_percent: 10, end_date: '' });
 
+  const [establishmentId, setEstablishmentId] = useState<string | null>(null);
+
   useEffect(() => {
-    fetchCampaigns();
+    fetchData();
   }, []);
 
-  const fetchCampaigns = async () => {
-    const { data } = await supabase.from('campaigns').select('*').order('created_at', { ascending: false });
-    if (data) setCampaigns(data);
+  const fetchData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. Get Establishment
+    const { data: est } = await supabase
+      .from('establishments')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+
+    if (est) {
+      setEstablishmentId(est.id);
+      // 2. Fetch Campaigns for this establishment
+      const { data } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('establishment_id', est.id)
+        .order('created_at', { ascending: false });
+
+      if (data) setCampaigns(data);
+    }
     setLoading(false);
   };
 
   const handleCreateCampaign = async () => {
     if (!newCampaign.name || !newCampaign.discount_percent) return alert('Preencha nome e desconto');
+    if (!establishmentId) return alert('Estabelecimento não encontrado. Tente recarregar a página.');
 
     const { error } = await supabase.from('campaigns').insert([
       {
@@ -31,20 +56,26 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
         description: newCampaign.description,
         discount_percent: newCampaign.discount_percent,
         end_date: newCampaign.end_date || null,
-        status: 'active'
+        status: 'active',
+        establishment_id: establishmentId
       }
     ]);
 
     if (error) {
-      alert('Erro ao criar campanha');
+      console.error('Erro ao criar campanha:', error);
+      alert('Erro ao criar campanha: ' + error.message);
     } else {
       setShowModal(false);
       setNewCampaign({ name: '', description: '', discount_percent: 10, end_date: '' });
-      fetchCampaigns();
+      fetchData();
     }
   };
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
+
+  if (showHelp) {
+    return <HelpCenter onBack={() => setShowHelp(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background-light text-slate-900 flex flex-col max-w-md mx-auto view-transition relative">
@@ -57,7 +88,7 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
             </button>
             <h2 className="text-2xl font-black text-white tracking-tight">Marketing</h2>
           </div>
-          <button className="px-4 py-2 rounded-full bg-white/5 text-white/70 text-xs font-bold hover:bg-white/10 transition-all">
+          <button onClick={() => setShowHelp(true)} className="px-4 py-2 rounded-full bg-white/5 text-white/70 text-xs font-bold hover:bg-white/10 transition-all">
             Ajuda
           </button>
         </div>

@@ -29,7 +29,7 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
       .from('establishments')
       .select('id')
       .eq('owner_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (est) {
       setEstablishmentId(est.id);

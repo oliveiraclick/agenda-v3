@@ -8,29 +8,99 @@ interface SalonDiscoveryProps {
 }
 
 const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfile }) => {
-  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [establishments, setEstablishments] = useState<any[]>([]);
+  const [filteredEstablishments, setFilteredEstablishments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchProfessionals();
+    fetchData();
   }, []);
 
-  const fetchProfessionals = async () => {
+  useEffect(() => {
+    filterData();
+  }, [selectedCategory, searchTerm, establishments]);
+
+  const fetchData = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Fetch Establishments
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'owner');
+        .from('establishments')
+        .select('*');
 
       if (error) throw error;
 
       if (data) {
-        setProfessionals(data);
+        const mappedData = data.map(item => ({
+          ...item,
+          avatar_url: item.image_url || item.avatar_url || 'https://picsum.photos/seed/business/400/250',
+          address: item.address || 'Localização não informada'
+        }));
+        setEstablishments(mappedData);
+        setFilteredEstablishments(mappedData);
       }
+
+      // 2. Fetch Favorites if user is logged in
+      if (user) {
+        const { data: favs } = await supabase
+          .from('favorites')
+          .select('establishment_id')
+          .eq('user_id', user.id);
+
+        if (favs) {
+          setFavorites(favs.map(f => f.establishment_id));
+        }
+      }
+
     } catch (error) {
-      console.error('Error fetching professionals:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filterData = () => {
+    let filtered = establishments;
+
+    // Filter by Category
+    if (selectedCategory !== 'Todos') {
+      filtered = filtered.filter(est =>
+        est.category && est.category.toLowerCase().includes(selectedCategory.toLowerCase())
+      );
+    }
+
+    // Filter by Search Term
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(est =>
+        (est.name && est.name.toLowerCase().includes(lowerTerm)) ||
+        (est.category && est.category.toLowerCase().includes(lowerTerm))
+      );
+    }
+
+    setFilteredEstablishments(filtered);
+  };
+
+  const toggleFavorite = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return alert('Faça login para favoritar');
+
+    // Optimistic Update
+    const isFav = favorites.includes(id);
+    const newFavs = isFav ? favorites.filter(fid => fid !== id) : [...favorites, id];
+    setFavorites(newFavs);
+
+    // Persist
+    if (isFav) {
+      await supabase.from('favorites').delete().match({ user_id: user.id, establishment_id: id });
+    } else {
+      await supabase.from('favorites').insert({ user_id: user.id, establishment_id: id });
     }
   };
 
@@ -46,11 +116,20 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
         </div>
         <div className="relative mb-2">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-          <input className="w-full h-12 pl-12 rounded-xl bg-slate-50 border-none focus:ring-1 focus:ring-primary-brand text-sm" placeholder="O que você procura hoje?" />
+          <input
+            className="w-full h-12 pl-12 rounded-xl bg-slate-50 border-none focus:ring-1 focus:ring-primary-brand text-sm"
+            placeholder="O que você procura hoje?"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
-          {['Todos', 'Estética', 'Bem-estar', 'Cabelo', 'Pet', 'Saúde'].map((cat, i) => (
-            <button key={cat} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${i === 0 ? 'bg-primary-brand text-white shadow-red-glow' : 'bg-white text-slate-400 border border-slate-100'}`}>
+          {['Todos', 'Estética', 'Bem-estar', 'Cabelo', 'Pet', 'Saúde'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-primary-brand text-white shadow-red-glow' : 'bg-white text-slate-400 border border-slate-100'}`}
+            >
               {cat}
             </button>
           ))}
@@ -58,24 +137,32 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
       </header>
 
       <main className="p-4 space-y-6 pb-24">
-        <h3 className="font-bold text-lg px-1 text-slate-900">Profissionais em Destaque</h3>
+        <h3 className="font-bold text-lg px-1 text-slate-900">Salões em Destaque</h3>
 
         {loading ? (
           <div className="text-center py-10 text-slate-400">Carregando...</div>
-        ) : professionals.length === 0 ? (
+        ) : filteredEstablishments.length === 0 ? (
           <div className="text-center py-10 text-slate-400">
             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">storefront_off</span>
-            <p>Nenhum profissional encontrado.</p>
+            <p>Nenhum salão encontrado.</p>
           </div>
         ) : (
-          professionals.map((shop) => (
-            <article key={shop.id} className="bg-white p-3 rounded-2xl border border-slate-100 shadow-card group">
+          filteredEstablishments.map((shop) => (
+            <article key={shop.id} className="bg-white p-3 rounded-2xl border border-slate-100 shadow-card group relative">
               <div onClick={() => onSelectSalon(shop)} className="w-full h-40 rounded-xl overflow-hidden relative mb-3 cursor-pointer">
-                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1">
+                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 z-10">
                   <span className="material-symbols-outlined text-amber-500 text-sm material-symbols-filled">star</span>
                   <span className="text-[10px] font-bold text-slate-900">5.0</span>
                 </div>
                 <img src={shop.avatar_url || 'https://picsum.photos/seed/business/400/250'} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+
+                {/* Favorite Button */}
+                <button
+                  onClick={(e) => toggleFavorite(shop.id, e)}
+                  className="absolute top-2 left-2 size-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center z-20 active:scale-95 transition-transform"
+                >
+                  <span className={`material-symbols-outlined text-[18px] ${favorites.includes(shop.id) ? 'text-red-500 material-symbols-filled' : 'text-slate-400'}`}>favorite</span>
+                </button>
               </div>
               <div className="flex justify-between items-end">
                 <div>

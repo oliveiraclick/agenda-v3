@@ -22,23 +22,34 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
   }, []);
 
   const fetchEstablishmentAndProducts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    // 1. Get Establishment ID
-    const { data: est } = await supabase
-      .from('establishments')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
+      // 1. Get Establishment ID
+      const { data: est, error: estError } = await supabase
+        .from('establishments')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
 
-    if (est) {
-      setEstablishmentId(est.id);
-      // 2. Fetch Products for this Establishment
-      const { data } = await supabase.from('products').select('*').eq('establishment_id', est.id);
-      if (data) setProducts(data);
+      if (estError) {
+        console.error('Error fetching establishment:', estError);
+      }
+
+      if (est) {
+        setEstablishmentId(est.id);
+        // 2. Fetch Products for this Establishment
+        const { data } = await supabase.from('products').select('*').eq('establishment_id', est.id);
+        if (data) setProducts(data);
+      } else {
+        console.log('Nenhum estabelecimento encontrado para este usuário.');
+      }
+    } catch (error) {
+      console.error('Erro geral:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAddProduct = async () => {

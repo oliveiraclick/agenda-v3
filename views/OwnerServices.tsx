@@ -12,25 +12,41 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
     const [showModal, setShowModal] = useState(false);
     const [newService, setNewService] = useState({ name: '', duration: 30, price: 0, description: '' });
 
+    const [establishmentId, setEstablishmentId] = useState<string | null>(null);
+
     useEffect(() => {
         fetchServices();
     }, []);
 
     const fetchServices = async () => {
-        const { data } = await supabase.from('services').select('*');
-        if (data) setServices(data);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: est } = await supabase
+            .from('establishments')
+            .select('id')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+
+        if (est) {
+            setEstablishmentId(est.id);
+            const { data } = await supabase.from('services').select('*').eq('establishment_id', est.id);
+            if (data) setServices(data);
+        }
         setLoading(false);
     };
 
     const handleAddService = async () => {
         if (!newService.name || !newService.price) return alert('Preencha nome e preço');
+        if (!establishmentId) return alert('Estabelecimento não encontrado.');
 
         const { error } = await supabase.from('services').insert([
             {
                 name: newService.name,
                 duration: newService.duration,
                 price: newService.price,
-                description: newService.description
+                description: newService.description,
+                establishment_id: establishmentId
             }
         ]);
 

@@ -72,6 +72,8 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
     }
   };
 
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   const handleBooking = async () => {
     setLoading(true);
 
@@ -92,19 +94,54 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
 
       if (error) throw error;
 
-      // Simulate success delay for UX
-      setTimeout(() => {
-        setLoading(false);
-        alert('Agendamento realizado com sucesso!');
-        onBack();
-      }, 1000);
+      // Show success modal
+      setLoading(false);
+      setShowSuccessModal(true);
 
     } catch (error) {
       console.error('Erro ao agendar:', error);
-      alert('Erro ao realizar agendamento. Tente novamente.');
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      alert(`Erro ao realizar agendamento: ${errorMessage}`);
       setLoading(false);
     }
   };
+
+  if (showSuccessModal) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-emerald-50 to-transparent"></div>
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="size-24 rounded-full bg-emerald-100 flex items-center justify-center mb-6 shadow-lg shadow-emerald-100 animate-in zoom-in duration-500 delay-100">
+              <span className="material-symbols-outlined text-5xl text-emerald-600">check_circle</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Agendamento Confirmado!</h2>
+            <p className="text-slate-500 font-medium text-sm mb-8 leading-relaxed">
+              Seu horário foi reservado com sucesso no <strong>{salon?.name}</strong>.
+            </p>
+
+            <div className="w-full bg-slate-50 rounded-2xl p-4 mb-8 border border-slate-100">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-slate-400 uppercase">Data</span>
+                <span className="text-sm font-black text-slate-900">{selectedDate.split('-').reverse().join('/')}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase">Horário</span>
+                <span className="text-sm font-black text-slate-900">{selectedTime}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={onBack}
+              className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              Voltar ao Início
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background-light text-slate-900 pb-40 view-transition">

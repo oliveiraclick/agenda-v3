@@ -86,6 +86,11 @@ const PublicStorefront: React.FC<PublicStorefrontProps> = ({ slug, onBookService
         }
     };
 
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        e.currentTarget.src = 'https://placehold.co/400?text=Imagem+Indisponível';
+        e.currentTarget.onerror = null; // prevents looping
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -130,6 +135,7 @@ const PublicStorefront: React.FC<PublicStorefrontProps> = ({ slug, onBookService
                     src={salon?.cover_url || salon?.image_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000'}
                     className="w-full h-full object-cover opacity-60"
                     alt="Capa do Salão"
+                    onError={handleImageError}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#F8FAFC] via-transparent to-transparent"></div>
             </div>
@@ -139,7 +145,12 @@ const PublicStorefront: React.FC<PublicStorefrontProps> = ({ slug, onBookService
                 <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-8 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-white/50 text-center">
                     <div className="size-28 rounded-[2rem] bg-white p-2 shadow-lg mx-auto -mt-24 overflow-hidden border-4 border-white/50">
                         {salon?.logo_url || salon?.image_url ? (
-                            <img src={salon.logo_url || salon.image_url} className="w-full h-full object-cover rounded-[1.5rem]" alt="Logo" />
+                            <img
+                                src={salon.logo_url || salon.image_url}
+                                className="w-full h-full object-cover rounded-[1.5rem]"
+                                alt="Logo"
+                                onError={handleImageError}
+                            />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary-brand/5 rounded-[1.5rem]">
                                 <Logo size={40} />
@@ -195,7 +206,11 @@ const PublicStorefront: React.FC<PublicStorefrontProps> = ({ slug, onBookService
                         {professionals.map(pro => (
                             <div key={pro.id} className="min-w-[140px] snap-center bg-white/80 p-3 rounded-[2rem] text-center border border-white/50 shadow-sm">
                                 <div className="size-24 mx-auto mb-3 rounded-[1.5rem] overflow-hidden bg-slate-100">
-                                    <img src={pro.image || 'https://i.pravatar.cc/150'} className="w-full h-full object-cover" />
+                                    <img
+                                        src={pro.image || 'https://i.pravatar.cc/150'}
+                                        className="w-full h-full object-cover"
+                                        onError={handleImageError}
+                                    />
                                 </div>
                                 <h4 className="font-bold text-slate-900 text-sm">{pro.name}</h4>
                                 <p className="text-xs text-primary-brand font-bold uppercase mt-1">{pro.role}</p>
@@ -244,7 +259,13 @@ const PublicStorefront: React.FC<PublicStorefrontProps> = ({ slug, onBookService
                         {products.map(prod => (
                             <div key={prod.id} className="bg-white p-3 rounded-[2rem] border border-slate-100 shadow-sm">
                                 <div className="aspect-square rounded-[1.5rem] bg-slate-100 mb-3 overflow-hidden">
-                                    {prod.image ? <img src={prod.image} className="w-full h-full object-cover" /> : null}
+                                    {prod.image ? (
+                                        <img
+                                            src={prod.image}
+                                            className="w-full h-full object-cover"
+                                            onError={handleImageError}
+                                        />
+                                    ) : null}
                                 </div>
                                 <h4 className="font-bold text-slate-900 text-sm leading-tight">{prod.name}</h4>
                                 <p className="text-xs text-slate-400 mt-1">{prod.description || prod.brand}</p>

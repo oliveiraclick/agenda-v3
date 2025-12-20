@@ -9,6 +9,15 @@ interface CustomerPortalProps {
 
 const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSalon }) => {
    const [lastVisit, setLastVisit] = useState<any>(null); // State for last visit
+   const [user, setUser] = useState<any>(null);
+   const [loading, setLoading] = useState(true);
+   const [establishments, setEstablishments] = useState<any[]>([]);
+   const [favorites, setFavorites] = useState<string[]>([]);
+   const [notifications, setNotifications] = useState<any[]>([]);
+   const [appointments, setAppointments] = useState<any[]>([]);
+   const [searchTerm, setSearchTerm] = useState('');
+   const [searchResults, setSearchResults] = useState<any[]>([]);
+   const [showNotifications, setShowNotifications] = useState(false);
 
    // Initialize Data
    useEffect(() => {
@@ -27,7 +36,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                .from('profiles')
                .select('name, avatar_url')
                .eq('id', user.id)
-               .single();
+               .maybeSingle();
 
             if (profile) {
                // Merge profile data into user metadata for display

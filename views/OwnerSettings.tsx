@@ -228,7 +228,7 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
           <label className="relative w-full h-40 rounded-2xl overflow-hidden group cursor-pointer border-2 border-dashed border-slate-200 hover:border-primary-brand transition-colors block">
             <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
             {avatarUrl ? (
-              <img src={avatarUrl} className="w-full h-full object-cover" />
+              <img src={avatarUrl} className="w-full h-full object-contain bg-slate-50" />
             ) : (
               <div className="w-full h-full bg-slate-50 flex items-center justify-center">
                 <span className="text-slate-400 text-sm">Sem imagem</span>

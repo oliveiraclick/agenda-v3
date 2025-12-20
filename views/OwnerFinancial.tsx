@@ -14,28 +14,54 @@ const OwnerFinancial: React.FC<OwnerFinancialProps> = ({ onBack }) => {
   const [showModal, setShowModal] = useState(false);
   const [newExpense, setNewExpense] = useState({ title: '', amount: 0, type: 'fixed' });
 
+  const [establishmentId, setEstablishmentId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchFinancialData();
   }, []);
 
   const fetchFinancialData = async () => {
-    const { data: appts } = await supabase.from('appointments').select('*').eq('status', 'confirmed');
-    if (appts) setAppointments(appts);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    const { data: exps } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-    if (exps) setExpenses(exps);
+    // 1. Get Establishment
+    const { data: est } = await supabase
+      .from('establishments')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle();
 
+    if (est) {
+      setEstablishmentId(est.id);
+
+      // 2. Fetch Data for this establishment
+      const { data: appts } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('establishment_id', est.id)
+        .eq('status', 'confirmed');
+      if (appts) setAppointments(appts);
+
+      const { data: exps } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('establishment_id', est.id)
+        .order('date', { ascending: false });
+      if (exps) setExpenses(exps);
+    }
     setLoading(false);
   };
 
   const handleAddExpense = async () => {
     if (!newExpense.title || !newExpense.amount) return alert('Preencha título e valor');
+    if (!establishmentId) return alert('Estabelecimento não encontrado.');
 
     const { error } = await supabase.from('expenses').insert([
       {
         title: newExpense.title,
         amount: newExpense.amount,
-        type: newExpense.type
+        type: newExpense.type,
+        establishment_id: establishmentId
       }
     ]);
 
