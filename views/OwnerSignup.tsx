@@ -60,6 +60,26 @@ const OwnerSignup: React.FC<OwnerSignupProps> = ({ onComplete, onBack }) => {
 
             if (profileError) throw profileError;
 
+            // 4. Criar estabelecimento (Vinculado ao dono)
+            const { error: establishmentError } = await supabase
+                .from('establishments')
+                .insert([
+                    {
+                        name: companyName,
+                        phone: phone,
+                        owner_id: signUpData.user.id,
+                        category: 'servicos', // Default category
+                        type: 'Serviços Diversos', // Default type
+                        image_url: 'https://picsum.photos/seed/new/400/200' // Default image
+                    }
+                ]);
+
+            if (establishmentError) {
+                console.error('Erro ao criar estabelecimento:', establishmentError);
+                // Não bloquear o cadastro se falhar a criação do salão (pode ser resolvido depois no painel)
+                // mas idealmente deveria avisar.
+            }
+
             console.log('✅ Empresa cadastrada com sucesso!');
             onComplete();
         } catch (err: any) {

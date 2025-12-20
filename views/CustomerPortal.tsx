@@ -54,7 +54,12 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
             .from('establishments')
             .select('*');
 
-         if (error) throw error;
+         if (error) {
+            console.error('Error fetching establishments:', error);
+            throw error;
+         }
+
+         console.log('Fetched establishments:', dbEstablishments);
 
          if (dbEstablishments && dbEstablishments.length > 0) {
             // Map DB columns to UI props
@@ -97,11 +102,13 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate }) => {
 
    const handleSearch = (term: string) => {
       setSearchTerm(term);
-      if (term.length > 0) {
-         const filtered = establishments.filter(est =>
-            est.name.toLowerCase().includes(term.toLowerCase()) ||
-            (est.type && est.type.toLowerCase().includes(term.toLowerCase()))
-         );
+      if (term.length > 0 && establishments) {
+         const lowerTerm = term.toLowerCase();
+         const filtered = establishments.filter(est => {
+            const name = est.name ? String(est.name).toLowerCase() : '';
+            const type = est.type ? String(est.type).toLowerCase() : '';
+            return name.includes(lowerTerm) || type.includes(lowerTerm);
+         });
          setSearchResults(filtered);
       } else {
          setSearchResults([]);
