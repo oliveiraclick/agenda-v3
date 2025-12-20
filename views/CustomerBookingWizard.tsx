@@ -11,11 +11,76 @@ interface CustomerBookingWizardProps {
 }
 
 const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, onLoyalty, onBack }) => {
-  // ... existing state ...
+  // Safe guard: If salon is null/undefined (e.g. direct nav or refresh without persistence), show error/loading or redirect
+  if (!salon) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
+        <p className="text-slate-500 mb-4">Selecione um salão para continuar.</p>
+        <button onClick={onBack} className="text-primary-brand font-bold">Voltar</button>
+      </div>
+    );
+  }
+  const [step, setStep] = useState<BookingStep>(BookingStep.Service);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedPro, setSelectedPro] = useState<Professional | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('2025-10-24');
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // ... existing useEffects ...
+  // Mock Data
+  const services: Service[] = [
+    { id: 1, name: 'Corte Degrade', price: 45.00, duration: 45, description: 'Corte moderno com acabamento perfeito' },
+    { id: 2, name: 'Barba Terapia', price: 35.00, duration: 30, description: 'Toalha quente e massagem facial' },
+    { id: 3, name: 'Combo Completo', price: 75.00, duration: 75, description: 'Corte + Barba + Sobrancelha' }
+  ];
 
-  // ... existing functions ...
+  const professionals: Professional[] = [
+    { id: 1, name: 'Carlos Silva', role: 'Barbeiro Master', image: 'https://i.pravatar.cc/150?u=1', performance: 5.0 },
+    { id: 2, name: 'André Santos', role: 'Especialista em Barba', image: 'https://i.pravatar.cc/150?u=2', performance: 4.9 }
+  ];
+
+  const products: Product[] = [
+    { id: 1, name: 'Pomada Matte', brand: 'Barba Forte', price: 45.00, image: 'https://picsum.photos/seed/p1/200' },
+    { id: 2, name: 'Óleo para Barba', brand: 'Viking', price: 35.00, image: 'https://picsum.photos/seed/p2/200' }
+  ];
+
+  const bookedSlots = ['10:00', '14:30'];
+
+  const totalPrice = (selectedService?.price || 0) + selectedProducts.reduce((acc, p) => acc + p.price, 0);
+
+  const nextStep = () => {
+    if (step === BookingStep.Service && selectedService) setStep(BookingStep.Professional);
+    else if (step === BookingStep.Professional) setStep(BookingStep.DateTime);
+    else if (step === BookingStep.DateTime && selectedDate && selectedTime) setStep(BookingStep.AddOns);
+    else if (step === BookingStep.AddOns) setStep(BookingStep.Summary);
+  };
+
+  const prevStep = () => {
+    if (step === BookingStep.Summary) setStep(BookingStep.AddOns);
+    else if (step === BookingStep.AddOns) setStep(BookingStep.DateTime);
+    else if (step === BookingStep.DateTime) setStep(BookingStep.Professional);
+    else if (step === BookingStep.Professional) setStep(BookingStep.Service);
+    else if (step === BookingStep.Service) onBack();
+  };
+
+  const toggleProduct = (product: Product) => {
+    if (selectedProducts.find(p => p.id === product.id)) {
+      setSelectedProducts(selectedProducts.filter(p => p.id !== product.id));
+    } else {
+      setSelectedProducts([...selectedProducts, product]);
+    }
+  };
+
+  const handleBooking = async () => {
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      alert('Agendamento realizado com sucesso!');
+      onBack();
+    }, 2000);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background-light text-slate-900 pb-40 view-transition">

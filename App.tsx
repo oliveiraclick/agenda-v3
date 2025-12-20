@@ -44,13 +44,51 @@ import { supabase } from './lib/supabase';
 const App: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<AppRole>('customer');
   const [ownerView, setOwnerView] = useState<OwnerView>('overview');
-  const [customerView, setCustomerView] = useState<CustomerView>('onboarding'); // Default to onboarding
+  const [customerView, setCustomerView] = useState<CustomerView>('portal'); // Default to portal, will adjust if not auth
   const [proView, setProView] = useState<ProfessionalView>('agenda');
   const [adminView, setAdminView] = useState<AdminView>('dashboard');
   const [signupRole, setSignupRole] = useState<'owner' | 'customer'>('customer');
   const [showHelp, setShowHelp] = useState(false);
   const [selectedSalon, setSelectedSalon] = useState<any>(null);
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // Persist session loading state
+
+  // Initialize Session
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        // User authenticated, determine role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          // Type assertion to ensure role matches AppRole or fallback to customer
+          const role = (profile.role as AppRole) || 'customer';
+          setCurrentRole(role);
+          // If customer, ensure they go to portal
+          if (role === 'customer') setCustomerView('portal');
+          else if (role === 'owner') setOwnerView('overview'); // Or whatever default
+        }
+      } else {
+        // No session, redirect to onboarding/login
+        setCustomerView('onboarding');
+      }
+    } catch (e) {
+      console.error('Session check failed', e);
+      setCustomerView('onboarding');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Detect hash-based public salon routing
   useEffect(() => {
@@ -110,6 +148,18 @@ const App: React.FC = () => {
       default: return <CustomerPortal onNavigate={setCustomerView} />;
     }
   };
+
+  // While loading session, show splash/loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background-light flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="size-16 rounded-full bg-primary-brand/20"></div>
+          <p className="text-slate-400 text-sm font-bold">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If accessing a public storefront URL, render it
   if (publicSlug) {
