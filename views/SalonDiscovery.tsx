@@ -97,10 +97,15 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
     setFavorites(newFavs);
 
     // Persist
-    if (isFav) {
-      await supabase.from('favorites').delete().match({ user_id: user.id, establishment_id: id });
-    } else {
-      await supabase.from('favorites').insert({ user_id: user.id, establishment_id: id });
+    const { error } = isFav
+      ? await supabase.from('favorites').delete().match({ user_id: user.id, establishment_id: id })
+      : await supabase.from('favorites').insert({ user_id: user.id, establishment_id: id });
+
+    if (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Erro ao favoritar: ' + error.message);
+      // Revert optimistic update
+      setFavorites(isFav ? [...favorites, id] : favorites.filter(fid => fid !== id));
     }
   };
 
@@ -161,7 +166,7 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
                   onClick={(e) => toggleFavorite(shop.id, e)}
                   className="absolute top-2 left-2 size-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center z-20 active:scale-95 transition-transform"
                 >
-                  <span className={`material-symbols-outlined text-[18px] ${favorites.includes(shop.id) ? 'text-red-500 material-symbols-filled' : 'text-slate-400'}`}>favorite</span>
+                  <span className={`material-symbols-outlined text-[18px] ${favorites.includes(shop.id) ? 'text-red-500 material-symbols-filled' : 'text-slate-400'}`}>check</span>
                 </button>
               </div>
               <div className="flex justify-between items-end">

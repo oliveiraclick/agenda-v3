@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase';
 
 interface CustomerPortalProps {
    onNavigate: (view: CustomerView) => void;
-   onSelectSalon?: (salon: any) => void; // New prop for selecting salon
+   onSelectSalon?: (salon: any) => void;
 }
 
 const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSalon }) => {
-   const [lastVisit, setLastVisit] = useState<any>(null); // State for last visit
+   const [lastVisit, setLastVisit] = useState<any>(null);
    const [user, setUser] = useState<any>(null);
    const [loading, setLoading] = useState(true);
    const [establishments, setEstablishments] = useState<any[]>([]);
@@ -184,8 +184,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
       setShowNotifications(!showNotifications);
    };
 
-   const hasFavorites = favorites.length > 0;
-   const favoriteItems = establishments.filter(est => favorites.includes(est.id));
+   const favoriteItems = establishments.filter(est => favorites.map(String).includes(String(est.id)));
    const unreadCount = notifications.filter(n => !n.read).length;
 
    return (
@@ -242,7 +241,6 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
          )}
 
          <main className="flex-1 p-6 overflow-y-auto">
-
             {/* Busca */}
             <form className="w-full relative group mb-8" onSubmit={e => { e.preventDefault(); }}>
                <span className="absolute left-6 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors">search</span>
@@ -257,7 +255,6 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
 
             {!searchTerm ? (
                <div className="space-y-8 animate-fade-in">
-
                   {/* Seção 1: Meus Agendamentos (Prioridade) */}
                   <section>
                      <div className="flex justify-between items-center mb-4 px-1">
@@ -313,7 +310,6 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                                  if (onSelectSalon) onSelectSalon(lastVisit.salon);
                                  onNavigate('booking');
                               } else {
-                                 // If no last visit, maybe allow searching or do nothing
                                  const element = document.querySelector('input[type="text"]') as HTMLInputElement;
                                  if (element) element.focus();
                               }
@@ -353,6 +349,9 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                   <section>
                      <div className="flex justify-between items-center mb-4 px-1">
                         <h3 className="font-bold text-lg text-slate-900">Meus Favoritos</h3>
+                        <button onClick={fetchData} className="text-xs font-bold text-primary-brand flex items-center gap-1">
+                           <span className="material-symbols-outlined text-[14px]">refresh</span> Atualizar
+                        </button>
                      </div>
                      {favoriteItems.length > 0 ? (
                         <div className="space-y-3">
@@ -381,7 +380,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                   </section>
                </div>
             ) : (
-               /* Resultados da Busca (Mantido Igual) */
+               /* Resultados da Busca */
                <div className="space-y-4 animate-fade-in pb-10">
                   <div className="flex justify-between items-center mb-2">
                      <h3 className="font-bold text-lg text-slate-900">Resultados para "{searchTerm}"</h3>
@@ -408,7 +407,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                               onClick={(e) => { e.stopPropagation(); toggleFavorite(est.id); }}
                               className={`size-12 rounded-full flex items-center justify-center transition-all ${favorites.includes(est.id) ? 'bg-primary-brand text-white shadow-lg shadow-primary-brand/30' : 'bg-slate-50 text-slate-300 hover:bg-slate-100'}`}
                            >
-                              <span className={`material-symbols-outlined ${favorites.includes(est.id) ? 'material-symbols-filled' : ''}`}>favorite</span>
+                              <span className={`material-symbols-outlined ${favorites.includes(est.id) ? 'material-symbols-filled' : ''}`}>check</span>
                            </button>
                         </div>
                      ))

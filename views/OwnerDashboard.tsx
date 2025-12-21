@@ -402,10 +402,8 @@ const OwnerDashboard: React.FC = () => {
             </button>
           </div>
         </div>
-        </div>
-  )
-}
-    </div >
+      )}
+    </div>
   );
 };
 
