@@ -4,7 +4,7 @@ export type AppRole = 'owner' | 'customer' | 'admin' | 'professional';
 export type OwnerView = 'overview' | 'agenda' | 'settings' | 'setup' | 'team' | 'inventory' | 'financial' | 'marketing';
 export type ProfessionalView = 'agenda' | 'commissions' | 'profile';
 export type CustomerView = 'onboarding' | 'login' | 'signup_choice' | 'signup' | 'forgot_password' | 'auth_register' | 'register_selection' | 'discovery' | 'portal' | 'booking' | 'loyalty' | 'history' | 'favorites' | 'profile' | 'auth_reset' | 'auth_feedback';
-export type AdminView = 'dashboard' | 'salons' | 'users' | 'settings';
+export type AdminView = 'dashboard' | 'salons' | 'users' | 'settings' | 'promocodes';
 
 export interface Appointment {
   id: string;
@@ -106,9 +106,7 @@ export interface PlatformPayment {
   status: 'paid' | 'pending' | 'failed';
   payment_date: string;
 }
-status: 'paid' | 'pending' | 'failed';
-payment_date: string;
-}
+
 
 export interface Profile {
   id: string;
@@ -123,4 +121,12 @@ export interface SystemSetting {
   key: string;
   value: any;
   updated_at: string;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  days_granted: number;
+  active: boolean;
+  created_at: string;
 }

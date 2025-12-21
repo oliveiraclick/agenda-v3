@@ -53,6 +53,8 @@ const App: React.FC = () => {
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Persist session loading state
 
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
+
   // Initialize Session & Auth Listener
   useEffect(() => {
     checkSession();
@@ -65,6 +67,7 @@ const App: React.FC = () => {
         setCustomerView('onboarding');
         setOwnerView('overview');
         setAdminView('dashboard');
+        setIsTrialExpired(false);
       }
     });
 
@@ -89,9 +92,32 @@ const App: React.FC = () => {
           // Type assertion to ensure role matches AppRole or fallback to customer
           const role = (profile.role as AppRole) || 'customer';
           setCurrentRole(role);
-          // If customer, ensure they go to portal
-          if (role === 'customer') setCustomerView('portal');
-          else if (role === 'owner') setOwnerView('overview'); // Or whatever default
+
+          // If owner, check trial status
+          if (role === 'owner') {
+            const { data: establishment } = await supabase
+              .from('establishments')
+              .select('trial_ends_at, subscription_plan')
+              .eq('owner_id', session.user.id)
+              .single();
+
+            if (establishment) {
+              const trialEnd = new Date(establishment.trial_ends_at || Date.now());
+              const now = new Date();
+              // If trial ended AND plan is not enterprise (assuming enterprise is safe)
+              // We assume 'pro' is the default trial plan, so we must check date.
+              // If they paid, we should probably update 'trial_ends_at' to future or have a 'status' = 'active_paid'.
+              // For now, simpler logic: If date passed, block.
+              if (trialEnd < now) {
+                setIsTrialExpired(true);
+              } else {
+                setIsTrialExpired(false);
+              }
+            }
+            setOwnerView('overview');
+          } else if (role === 'customer') {
+            setCustomerView('portal');
+          }
         }
       } else {
         // No session, redirect to onboarding/login
@@ -121,8 +147,6 @@ const App: React.FC = () => {
     window.addEventListener('hashchange', checkHash);
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
-
-  // ... existing code ...
 
   const renderOwnerView = () => {
     switch (ownerView) {
@@ -176,6 +200,85 @@ const App: React.FC = () => {
     );
   }
 
+  // Trial Expired Blocking Modal
+  if (isTrialExpired && currentRole === 'owner') {
+    const [proCount, setProCount] = useState(0);
+    const [loadingPrice, setLoadingPrice] = useState(true);
+
+    useEffect(() => {
+      const fetchPros = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get Establishment ID first
+        const { data: est } = await supabase.from('establishments').select('id').eq('owner_id', user.id).single();
+        if (est) {
+          const { count } = await supabase
+            .from('professionals')
+            .select('*', { count: 'exact', head: true })
+            .eq('establishment_id', est.id);
+          setProCount(count || 0);
+        }
+        setLoadingPrice(false);
+      };
+      fetchPros();
+    }, []);
+
+    const basePrice = 29.00;
+    const proPrice = 10.00;
+    const total = basePrice + (proCount * proPrice);
+
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 z-50 relative">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-in zoom-in duration-300">
+          <div className="size-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600">
+            <span className="material-symbols-outlined text-4xl">lock_clock</span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Período Gratuito Encerrado</h2>
+          <p className="text-slate-500 mb-6">
+            Para continuar gerenciando seu negócio, ative sua assinatura.
+          </p>
+
+          {/* Price Breakdown */}
+          <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left space-y-2 border border-slate-100">
+            <div className="flex justify-between text-sm text-slate-600">
+              <span>Plano Base</span>
+              <span className="font-bold">R$ {basePrice.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-slate-600">
+              <span>{proCount} Profissionais (x R$ {proPrice.toFixed(2)})</span>
+              <span className="font-bold">R$ {(proCount * proPrice).toFixed(2)}</span>
+            </div>
+            <div className="border-t border-slate-200 pt-2 flex justify-between text-base font-black text-slate-900">
+              <span>Total Mensal</span>
+              <span>R$ {total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <a
+              href="https://pay.kiwify.com.br/ZqDT7Lt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-4 bg-primary-brand text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-primary-brand/30"
+            >
+              Pagar Agora
+            </a>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="block w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+            >
+              Sair da Conta
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-6">
+            Após o pagamento, seu acesso será liberado automaticamente em alguns instantes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // If accessing a public storefront URL, render it
   if (publicSlug) {
     return (
@@ -198,6 +301,7 @@ const App: React.FC = () => {
             currentRole === 'professional' ? renderProfessionalView() :
               <AdminDashboard currentView={adminView} onNavigate={setAdminView} />}
       </div>
+
 
       {/* NavBars por Papel */}
       {currentRole === 'owner' && (

@@ -12,6 +12,7 @@ import AdminRevenue from '../components/admin/AdminRevenue';
 import AdminStatsFilter from '../components/admin/AdminStatsFilter';
 import AdminUsersTable from '../components/admin/AdminUsersTable';
 import AdminSettings from '../components/admin/AdminSettings';
+import AdminPromoCodes from '../components/admin/AdminPromoCodes';
 
 interface AdminDashboardProps {
    currentView: AdminView;
@@ -215,6 +216,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
             {currentView === 'settings' && (
                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <AdminSettings />
+               </div>
+            )}
+
+            {/* Promo Codes View */}
+            {currentView === 'promocodes' && (
+               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <AdminPromoCodes />
                </div>
             )}
          </main>

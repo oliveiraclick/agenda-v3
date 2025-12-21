@@ -13,6 +13,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, onNavigate, on
         { id: 'dashboard', label: 'Visão Geral', icon: 'dashboard' },
         { id: 'salons', label: 'Salões', icon: 'storefront' },
         { id: 'users', label: 'Usuários', icon: 'group' },
+        { id: 'promocodes', label: 'Códigos Promo', icon: 'local_offer' },
         { id: 'settings', label: 'Configurações', icon: 'settings' },
     ];
 
@@ -31,8 +32,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, onNavigate, on
                         key={item.id}
                         onClick={() => onNavigate(item.id as AdminView)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === item.id
-                                ? 'bg-primary-brand text-white shadow-lg shadow-primary-brand/20 font-bold'
-                                : 'text-slate-400 hover:bg-slate-800 hover:text-white font-medium'
+                            ? 'bg-primary-brand text-white shadow-lg shadow-primary-brand/20 font-bold'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white font-medium'
                             }`}
                     >
                         <span className="material-symbols-outlined">{item.icon}</span>
