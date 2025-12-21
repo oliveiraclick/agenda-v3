@@ -6,11 +6,12 @@ import { supabase } from '../lib/supabase';
 
 interface CustomerBookingWizardProps {
   salon: any; // Recebe o salão selecionado
+  initialServiceId?: string;
   onLoyalty: () => void;
   onBack: () => void;
 }
 
-const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, onLoyalty, onBack }) => {
+const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, initialServiceId, onLoyalty, onBack }) => {
   // Safe guard: If salon is null/undefined (e.g. direct nav or refresh without persistence), show error/loading or redirect
   if (!salon) {
     return (
@@ -21,31 +22,79 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
     );
   }
   const [step, setStep] = useState<BookingStep>(BookingStep.Service);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPro, setSelectedPro] = useState<Professional | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock Data
-  const services: Service[] = [
-    { id: '1', name: 'Corte Degrade', price: 45.00, duration: '45', description: 'Corte moderno com acabamento perfeito', category: 'Cabelo' },
-    { id: '2', name: 'Barba Terapia', price: 35.00, duration: '30', description: 'Toalha quente e massagem facial', category: 'Barba' },
-    { id: '3', name: 'Combo Completo', price: 75.00, duration: '75', description: 'Corte + Barba + Sobrancelha', category: 'Combos' }
-  ];
+  // Fetch Data on Mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch Services
+        const { data: svcs } = await supabase.from('services').select('*').eq('establishment_id', salon.id);
+        if (svcs) {
+          setServices(svcs);
+          // Auto-select initial service if provided
+          if (initialServiceId) {
+            const found = svcs.find((s: any) => s.id === initialServiceId);
+            if (found) setSelectedService(found);
+          }
+        }
 
-  const professionals: Professional[] = [
-    { id: '1', name: 'Carlos Silva', role: 'Barbeiro Master', image: 'https://i.pravatar.cc/150?u=1', performance: 5.0, revenue: '0', commission_service: 0, commission_product: 0, status: 'active' },
-    { id: '2', name: 'André Santos', role: 'Especialista em Barba', image: 'https://i.pravatar.cc/150?u=2', performance: 4.9, revenue: '0', commission_service: 0, commission_product: 0, status: 'active' }
-  ];
+        // 2. Fetch Professionals
+        const { data: pros } = await supabase.from('professionals').select('*').eq('establishment_id', salon.id);
+        if (pros) setProfessionals(pros);
 
-  const products: Product[] = [
-    { id: '1', name: 'Pomada Matte', brand: 'Barba Forte', price: 45.00, image: 'https://picsum.photos/seed/p1/200', cost: 20, stock: 10, category: 'Estilo', status: 'normal' },
-    { id: '2', name: 'Óleo para Barba', brand: 'Viking', price: 35.00, image: 'https://picsum.photos/seed/p2/200', cost: 15, stock: 15, category: 'Cuidados', status: 'normal' }
-  ];
+        // 3. Fetch Products
+        const { data: prods } = await supabase.from('products').select('*').eq('establishment_id', salon.id);
+        if (prods) setProducts(prods);
 
-  const bookedSlots = ['10:00', '14:30'];
+      } catch (err) {
+        console.error('Error fetching wizard data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [salon.id, initialServiceId]);
+
+  // Fetch Availability when Date or Pro changes
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      // Simple logic: Fetch all appointments for the date and disable slots
+      // In a real app, this should filter by professional if selected, or check any pro if none selected (complex)
+      // For MVP: We will filter by professional IF selected, otherwise show all slots (or check all pros availability - complex)
+      // MVP Simplification: If no pro selected, we show slots available for ANY pro (hard to do without backend logic).
+      // Let's enforce Pro selection? Or just fetch appointments for that salon on that date.
+
+      let query = supabase
+        .from('appointments')
+        .select('time')
+        .eq('establishment_id', salon.id)
+        .eq('date', selectedDate)
+        .neq('status', 'cancelled'); // Don't count cancelled
+
+      if (selectedPro) {
+        query = query.eq('professional_name', selectedPro.name); // Using name as foreign key in this MVP schema is risky but consistent with current insert
+      }
+
+      const { data } = await query;
+      if (data) {
+        setBookedSlots(data.map(a => a.time));
+      }
+    };
+
+    fetchAvailability();
+  }, [salon.id, selectedDate, selectedPro]);
 
   const totalPrice = (selectedService?.price || 0) + selectedProducts.reduce((acc, p) => acc + p.price, 0);
 
@@ -85,7 +134,9 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
         user_id: user.id,
         establishment_id: salon.id,
         service_name: selectedService?.name,
-        professional_name: selectedPro?.name,
+        professional_name: selectedPro?.name, // Ideally use ID, but schema uses name temporarily? Checked schema, uses names or IDs? Checked types.ts: professional_id is optional? View file shows professional_name insert. Sticking to current working schema.
+        professional_id: selectedPro?.id,
+        service_id: selectedService?.id,
         date: selectedDate,
         time: selectedTime,
         price: totalPrice,
@@ -143,12 +194,21 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
     );
   }
 
+  // Render Loading State
+  if (loading && !services.length) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin size-8 border-4 border-primary-brand border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background-light text-slate-900 pb-40 view-transition">
       {/* Hero Header */}
       <section className="relative w-full">
         <div className="relative h-[240px] w-full overflow-hidden rounded-b-[2.5rem] shadow-xl">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${salon?.avatar_url || 'https://picsum.photos/seed/barbershop/800/400'}")` }}></div>
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${salon?.avatar_url || salon?.cover_url || 'https://picsum.photos/seed/barbershop/800/400'}")` }}></div>
           <div className="absolute inset-0 bg-gradient-to-t from-[#111722] via-[#111722]/60 to-transparent"></div>
           <div className="absolute top-4 left-4 z-20 flex gap-2">
             <button onClick={prevStep} className="size-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/10 active:scale-95 transition-transform">
@@ -223,6 +283,9 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
                   </div>
                 </div>
               ))}
+              {services.length === 0 && !loading && (
+                <div className="text-center p-8 text-slate-400">Nenhum serviço disponível.</div>
+              )}
             </div>
           </section>
         )}
@@ -232,23 +295,28 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
           <section className="px-5 space-y-4">
             <h3 className="font-bold text-lg text-slate-900">Escolha o Profissional</h3>
             <div className="grid grid-cols-2 gap-4">
+              {/* Option to select 'Any Professional' could be added here */}
               {professionals.map(pro => (
                 <div
                   key={pro.id}
                   onClick={() => setSelectedPro(pro)}
                   className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${selectedPro?.id === pro.id ? 'border-primary-brand bg-rose-50/30' : 'border-slate-100 bg-white'}`}
                 >
-                  <img src={pro.image} alt={pro.name} className="w-16 h-16 rounded-full object-cover mb-3 mx-auto" />
+                  <img src={pro.image || 'https://i.pravatar.cc/150'} alt={pro.name} onError={(e: any) => e.target.src = 'https://i.pravatar.cc/150'} className="w-16 h-16 rounded-full object-cover mb-3 mx-auto" />
                   <div className="text-center">
                     <h4 className="font-bold text-slate-900">{pro.name}</h4>
                     <p className="text-xs text-slate-500">{pro.role}</p>
                     <div className="flex items-center justify-center gap-1 mt-2">
+                      {/* Performance could be calculated from reviews in future */}
                       <span className="material-symbols-outlined text-amber-500 text-[14px] material-symbols-filled">star</span>
                       <span className="text-xs font-bold">{pro.performance || '5.0'}</span>
                     </div>
                   </div>
                 </div>
               ))}
+              {professionals.length === 0 && (
+                <div className="col-span-2 text-center p-8 text-slate-400">Nenhum profissional disponível.</div>
+              )}
             </div>
           </section>
         )}

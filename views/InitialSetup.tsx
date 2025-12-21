@@ -16,34 +16,18 @@ const InitialSetup: React.FC<InitialSetupProps> = ({ onComplete }) => {
     setPromoStatus('validating');
 
     try {
-      // 1. Validate Code
-      const { data: days, error } = await supabase.rpc('validate_promo_code', { input_code: promoCode });
+      // 1. Validate & Apply via Secure RPC
+      const { data, error } = await supabase.rpc('apply_promo_code', { input_code: promoCode });
 
       if (error) throw error;
 
-      if (days) {
-        // 2. Apply to Establishment
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not found');
-
-        const newTrialDate = new Date();
-        newTrialDate.setDate(newTrialDate.getDate() + days);
-
-        const { error: updateError } = await supabase
-          .from('establishments')
-          .update({
-            trial_ends_at: newTrialDate.toISOString(),
-            subscription_plan: 'pro' // Grant pro access during trial
-          })
-          .eq('owner_id', user.id);
-
-        if (updateError) throw updateError;
-
+      if (data && data.success) {
         setPromoStatus('success');
-        setPromoMessage(`Código aplicado! Você ganhou ${days} dias grátis.`);
+        setPromoMessage(`Código aplicado! Você ganhou ${data.days} dias grátis.`);
+        // Note: The establishments table update happens on the server
       } else {
         setPromoStatus('error');
-        setPromoMessage('Código inválido ou expirado.');
+        setPromoMessage(data?.message || 'Código inválido ou expirado.');
       }
     } catch (err) {
       console.error(err);

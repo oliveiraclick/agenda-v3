@@ -35,6 +35,55 @@ BEGIN
 END;
 $$;
 
+-- Função segura para aplicar código (Valida e aplica em uma transação)
+CREATE OR REPLACE FUNCTION public.apply_promo_code(input_code text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    found_days int;
+    promo_id uuid;
+    user_id uuid;
+    est_id uuid;
+    new_date timestamp with time zone;
+BEGIN
+    user_id := auth.uid();
+    
+    -- 1. Validar Código
+    SELECT id, days_granted INTO promo_id, found_days
+    FROM public.promo_codes
+    WHERE code ILIKE input_code AND active = true;
+    
+    IF promo_id IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'Código inválido ou expirado.');
+    END IF;
+
+    -- 2. Buscar Estabelecimento do Usuário
+    SELECT id INTO est_id
+    FROM public.establishments
+    WHERE owner_id = user_id;
+
+    IF est_id IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'Estabelecimento não encontrado.');
+    END IF;
+
+    -- 3. Calcular Nova Data (Hoje + Dias)
+    -- Opcional: Se já tiver trial futuro, somar a ele? Por simplicidade, reseta a partir de hoje.
+    new_date := now() + (found_days || ' days')::interval;
+
+    -- 4. Atualizar Estabelecimento
+    UPDATE public.establishments
+    SET 
+        trial_ends_at = new_date,
+        subscription_plan = 'pro',
+        updated_at = now()
+    WHERE id = est_id;
+
+    RETURN json_build_object('success', true, 'days', found_days, 'new_date', new_date);
+END;
+$$;
+
 -- Inserir Configurações de Preço no System Settings
 INSERT INTO public.system_settings (key, value, updated_at)
 VALUES 

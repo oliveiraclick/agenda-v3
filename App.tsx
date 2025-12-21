@@ -55,6 +55,9 @@ const App: React.FC = () => {
 
   const [isTrialExpired, setIsTrialExpired] = useState(false);
 
+  // State to memory booking intent before login
+  const [pendingBooking, setPendingBooking] = useState<{ slug: string; serviceId: string } | null>(null);
+
   // Initialize Session & Auth Listener
   useEffect(() => {
     checkSession();
@@ -74,7 +77,30 @@ const App: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Remove dependency on pendingBooking to avoid loops, handle inside checkSession if needed or separate effect
+
+  // Effect to handle pending booking ONLY after role is set to customer and user is logged in
+  useEffect(() => {
+    const restoreBooking = async () => {
+      if (currentRole === 'customer' && pendingBooking && customerView === 'portal') {
+        setIsLoading(true);
+        // Fetch salon by slug
+        const { data: salon } = await supabase.from('establishments').select('*').eq('slug', pendingBooking.slug).single();
+        if (salon) {
+          setSelectedSalon(salon);
+          setCustomerView('booking');
+          // Ideally pass serviceId to booking wizard, but for now just opening the wizard at the right salon is a huge win.
+          // We can store serviceId in a ref or context if we want to auto-select it in the wizard later.
+        }
+        setPendingBooking(null); // Clear pending
+        setIsLoading(false);
+      }
+    };
+
+    if (!isLoading && currentRole === 'customer') {
+      restoreBooking();
+    }
+  }, [isLoading, currentRole, customerView]); // Triggers when session check finishes
 
   const checkSession = async () => {
     try {
@@ -104,10 +130,6 @@ const App: React.FC = () => {
             if (establishment) {
               const trialEnd = new Date(establishment.trial_ends_at || Date.now());
               const now = new Date();
-              // If trial ended AND plan is not enterprise (assuming enterprise is safe)
-              // We assume 'pro' is the default trial plan, so we must check date.
-              // If they paid, we should probably update 'trial_ends_at' to future or have a 'status' = 'active_paid'.
-              // For now, simpler logic: If date passed, block.
               if (trialEnd < now) {
                 setIsTrialExpired(true);
               } else {
@@ -116,7 +138,8 @@ const App: React.FC = () => {
             }
             setOwnerView('overview');
           } else if (role === 'customer') {
-            setCustomerView('portal');
+            // Logic handled by useEffect above for pending booking
+            if (customerView === 'onboarding') setCustomerView('portal');
           }
         }
       } else {
@@ -147,6 +170,8 @@ const App: React.FC = () => {
     window.addEventListener('hashchange', checkHash);
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
+
+  // ... (Owner/Pro View Renders unchanged)
 
   const renderOwnerView = () => {
     switch (ownerView) {
@@ -182,7 +207,7 @@ const App: React.FC = () => {
       case 'favorites': return <CustomerFavorites onBack={() => setCustomerView('portal')} />;
       case 'history': return <CustomerHistory onBack={() => setCustomerView('portal')} />;
       case 'profile': return <CustomerProfile onBack={() => setCustomerView('portal')} onLogout={() => setCustomerView('login')} />;
-      case 'booking': return <CustomerBookingWizard salon={selectedSalon} onLoyalty={() => setCustomerView('loyalty')} onBack={() => setCustomerView('discovery')} />;
+      case 'booking': return <CustomerBookingWizard salon={selectedSalon} initialServiceId={pendingBooking?.serviceId} onLoyalty={() => setCustomerView('loyalty')} onBack={() => setCustomerView('discovery')} />;
       case 'loyalty': return <CustomerLoyalty onBack={() => setCustomerView('portal')} />;
       default: return <CustomerPortal onNavigate={setCustomerView} />;
     }
@@ -285,8 +310,9 @@ const App: React.FC = () => {
       <PublicStorefront
         slug={publicSlug}
         onBookService={(serviceId) => {
-          // Redirect to login/signup for booking
-          window.location.hash = '';
+          // Store intent and redirect to login
+          setPendingBooking({ slug: publicSlug, serviceId });
+          window.location.hash = ''; // Clear hash to enter app mode
           setCustomerView('login');
         }}
       />

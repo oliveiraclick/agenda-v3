@@ -41,7 +41,8 @@ const AdminPromoCodes: React.FC = () => {
             });
 
         if (error) {
-            alert('Erro ao criar código. Verifique se já existe.');
+            console.error('Erro detalhado:', error);
+            alert(`Erro ao criar código: ${error.message || JSON.stringify(error)}`);
         } else {
             setNewCode('');
             fetchCodes();
@@ -57,7 +58,8 @@ const AdminPromoCodes: React.FC = () => {
             .eq('id', id);
 
         if (error) {
-            alert('Erro ao excluir código');
+            console.error('Erro ao excluir:', error);
+            alert(`Erro ao excluir código: ${error.message}`);
         } else {
             fetchCodes();
         }
