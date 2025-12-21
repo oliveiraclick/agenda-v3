@@ -69,6 +69,7 @@ export interface Establishment {
   status: 'active' | 'blocked' | 'pending';
   trial_ends_at?: string;
   subscription_plan: 'free' | 'pro' | 'enterprise';
+  category?: string;
 }
 
 export enum BookingStep {
