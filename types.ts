@@ -55,10 +55,53 @@ export interface Product {
   status: 'normal' | 'low' | 'critical';
 }
 
+export interface Establishment {
+  id: string;
+  name: string;
+  slug?: string;
+  cover_url?: string;
+  logo_url?: string;
+  address?: string;
+  phone?: string;
+  description?: string;
+  owner_id?: string;
+  // Admin Fields
+  status: 'active' | 'blocked' | 'pending';
+  trial_ends_at?: string;
+  subscription_plan: 'free' | 'pro' | 'enterprise';
+}
+
 export enum BookingStep {
   Service = 1,
   Professional = 2,
   DateTime = 3,
   AddOns = 4,
   Summary = 5
+}
+
+export interface Feedback {
+  id: string;
+  user_id: string;
+  type: 'bug' | 'feature' | 'support' | 'other';
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  created_at: string;
+}
+
+export interface SystemNotification {
+  id: string;
+  title: string;
+  message: string;
+  target_audience: 'all' | 'owners' | 'customers';
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface PlatformPayment {
+  id: string;
+  establishment_id: string;
+  amount: number;
+  plan_type: 'pro' | 'enterprise';
+  status: 'paid' | 'pending' | 'failed';
+  payment_date: string;
 }
