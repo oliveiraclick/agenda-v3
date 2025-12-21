@@ -23,7 +23,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
   const [step, setStep] = useState<BookingStep>(BookingStep.Service);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPro, setSelectedPro] = useState<Professional | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('2025-10-24');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -259,16 +259,30 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, on
             <div>
               <h3 className="font-bold text-lg text-slate-900 mb-3">Escolha o Dia</h3>
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                {DAYS_OF_WEEK.map(d => (
-                  <button
-                    key={d.day}
-                    onClick={() => setSelectedDate(`2025-10-${d.day}`)}
-                    className={`min-w-[4.5rem] h-20 rounded-2xl flex flex-col items-center justify-center gap-1 border-2 transition-all ${selectedDate.endsWith(d.day.toString()) ? 'bg-primary-brand text-white border-primary-brand shadow-red-glow' : 'bg-white text-slate-400 border-slate-100'}`}
-                  >
-                    <span className="text-[10px] font-black uppercase tracking-wider">{d.short}</span>
-                    <span className="text-2xl font-black">{d.day}</span>
-                  </button>
-                ))}
+                {(() => {
+                  const days = [];
+                  const today = new Date();
+                  for (let i = 0; i < 14; i++) {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() + i);
+                    const dateStr = d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+                    const dayNum = d.getDate();
+                    const weekDay = d.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase().slice(0, 3);
+
+                    days.push({ date: dateStr, day: dayNum, short: weekDay });
+                  }
+
+                  return days.map(d => (
+                    <button
+                      key={d.date}
+                      onClick={() => setSelectedDate(d.date)}
+                      className={`min-w-[4.5rem] h-20 rounded-2xl flex flex-col items-center justify-center gap-1 border-2 transition-all ${selectedDate === d.date ? 'bg-primary-brand text-white border-primary-brand shadow-red-glow' : 'bg-white text-slate-400 border-slate-100'}`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-wider">{d.short}</span>
+                      <span className="text-2xl font-black">{d.day}</span>
+                    </button>
+                  ));
+                })()}
               </div>
             </div>
 

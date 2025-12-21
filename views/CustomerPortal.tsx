@@ -259,7 +259,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
                   <section>
                      <div className="flex justify-between items-center mb-4 px-1">
                         <h3 className="font-bold text-lg text-slate-900">Meus Agendamentos</h3>
-                        <span className="text-xs font-bold text-primary-brand cursor-pointer">Ver todos</span>
+                        <span onClick={() => onNavigate('history')} className="text-xs font-bold text-primary-brand cursor-pointer">Ver todos</span>
                      </div>
 
                      {appointments.length > 0 ? (
