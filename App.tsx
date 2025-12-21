@@ -53,9 +53,24 @@ const App: React.FC = () => {
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Persist session loading state
 
-  // Initialize Session
+  // Initialize Session & Auth Listener
   useEffect(() => {
     checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        checkSession();
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentRole('customer');
+        setCustomerView('onboarding');
+        setOwnerView('overview');
+        setAdminView('dashboard');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkSession = async () => {
