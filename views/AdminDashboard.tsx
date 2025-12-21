@@ -9,6 +9,9 @@ import AdminTopSalons from '../components/admin/AdminTopSalons';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminNotifications from '../components/admin/AdminNotifications';
 import AdminRevenue from '../components/admin/AdminRevenue';
+import AdminStatsFilter from '../components/admin/AdminStatsFilter';
+import AdminUsersTable from '../components/admin/AdminUsersTable';
+import AdminSettings from '../components/admin/AdminSettings';
 
 interface AdminDashboardProps {
    currentView: AdminView;
@@ -16,29 +19,77 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate }) => {
-   const [stats, setStats] = useState({ activeSaloons: 0, totalUsers: 0, mrr: 0 });
+   const [stats, setStats] = useState({
+      activeSaloons: 0,
+      totalUsers: 0,
+      totalProfessionals: 0,
+      appointmentsCount: 0,
+      mrr: 0
+   });
+
+   // Stats Filter State
+   const [selectedRange, setSelectedRange] = useState('today');
+   const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
+   const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
 
    useEffect(() => {
-      const loadStats = async () => {
-         // Conta Salões (Establishments)
-         const { count: saloonsCount } = await supabase
-            .from('establishments')
-            .select('*', { count: 'exact', head: true });
-
-         // Conta Usuários (Profiles)
-         const { count: usersCount } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'customer');
-
-         setStats({
-            activeSaloons: saloonsCount || 0,
-            totalUsers: usersCount || 0,
-            mrr: (saloonsCount || 0) * 97 // MRR Simulado base R$97/salão
-         });
-      };
       loadStats();
-   }, []);
+   }, [selectedRange, customStartDate, customEndDate]);
+
+   const loadStats = async () => {
+      // 1. Basic Counts (Salons & Users)
+      const { count: saloonsCount } = await supabase
+         .from('establishments')
+         .select('*', { count: 'exact', head: true });
+
+      const { count: usersCount } = await supabase
+         .from('profiles')
+         .select('*', { count: 'exact', head: true })
+         .eq('role', 'customer');
+
+      // 2. Total Professionals
+      const { count: professionalsCount } = await supabase
+         .from('profiles')
+         .select('*', { count: 'exact', head: true })
+         .eq('role', 'professional');
+
+      // 3. Appointments Count (Filtered)
+      let query = supabase.from('appointments').select('*', { count: 'exact', head: true });
+
+      const now = new Date();
+      let startDate = new Date();
+
+      if (selectedRange === 'today') {
+         startDate.setHours(0, 0, 0, 0);
+      } else if (selectedRange === '7d') {
+         startDate.setDate(now.getDate() - 7);
+      } else if (selectedRange === '15d') {
+         startDate.setDate(now.getDate() - 15);
+      } else if (selectedRange === '30d') {
+         startDate.setDate(now.getDate() - 30);
+      } else if (selectedRange === 'custom') {
+         startDate = new Date(customStartDate);
+         const endDate = new Date(customEndDate);
+         endDate.setHours(23, 59, 59, 999);
+         query = query.lte('created_at', endDate.toISOString());
+      }
+
+      if (selectedRange !== 'custom') {
+         query = query.gte('created_at', startDate.toISOString());
+      } else {
+         query = query.gte('created_at', startDate.toISOString());
+      }
+
+      const { count: appointmentsCount } = await query;
+
+      setStats({
+         activeSaloons: saloonsCount || 0,
+         totalUsers: usersCount || 0,
+         totalProfessionals: professionalsCount || 0,
+         appointmentsCount: appointmentsCount || 0,
+         mrr: (saloonsCount || 0) * 97 // MRR Simulado base R$97/salão
+      });
+   };
 
    const handleLogout = async () => {
       await supabase.auth.signOut();
@@ -74,8 +125,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
             {/* Dashboard View */}
             {currentView === 'dashboard' && (
                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+                  {/* Stats Filter */}
+                  <AdminStatsFilter
+                     selectedRange={selectedRange}
+                     onRangeChange={setSelectedRange}
+                     customStartDate={customStartDate}
+                     customEndDate={customEndDate}
+                     onCustomDateChange={(s, e) => { setCustomStartDate(s); setCustomEndDate(e); }}
+                  />
+
                   {/* KPI Cards */}
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-4 gap-6">
                      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                         <div className="flex items-center gap-4 mb-2">
                            <div className="size-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -83,16 +144,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                            </div>
                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salões Ativos</span>
                         </div>
-                        <p className="text-4xl font-black text-slate-900">{stats.activeSaloons}</p>
+                        <p className="text-3xl font-black text-slate-900">{stats.activeSaloons}</p>
                      </div>
                      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                         <div className="flex items-center gap-4 mb-2">
                            <div className="size-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
                               <span className="material-symbols-outlined">group</span>
                            </div>
-                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuários Totais</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Profissionais</span>
                         </div>
-                        <p className="text-4xl font-black text-slate-900">{stats.totalUsers}</p>
+                        <p className="text-3xl font-black text-slate-900">{stats.totalProfessionals}</p>
+                     </div>
+                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-4 mb-2">
+                           <div className="size-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600">
+                              <span className="material-symbols-outlined">event</span>
+                           </div>
+                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agendamentos</span>
+                        </div>
+                        <p className="text-3xl font-black text-slate-900">{stats.appointmentsCount}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1">
+                           {selectedRange === 'today' ? 'Hoje' : selectedRange === 'custom' ? 'Período Selecionado' : `Últimos ${selectedRange}`}
+                        </p>
                      </div>
                      <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl shadow-lg text-white">
                         <div className="flex items-center gap-4 mb-2">
@@ -101,7 +174,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                            </div>
                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">MRR Estimado</span>
                         </div>
-                        <p className="text-4xl font-black">R$ {stats.mrr.toLocaleString('pt-BR')}</p>
+                        <p className="text-3xl font-black">R$ {stats.mrr.toLocaleString('pt-BR')}</p>
                      </div>
                   </div>
 
@@ -131,12 +204,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                </div>
             )}
 
-            {/* Users View (Placeholder) */}
+            {/* Users View */}
             {currentView === 'users' && (
-               <div className="bg-white p-10 rounded-3xl text-center border border-slate-100">
-                  <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">engineering</span>
-                  <h3 className="text-xl font-bold text-slate-900">Em Desenvolvimento</h3>
-                  <p className="text-slate-500">A gestão de usuários estará disponível em breve.</p>
+               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <AdminUsersTable />
+               </div>
+            )}
+
+            {/* Settings View */}
+            {currentView === 'settings' && (
+               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <AdminSettings />
                </div>
             )}
          </main>

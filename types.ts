@@ -105,3 +105,21 @@ export interface PlatformPayment {
   status: 'paid' | 'pending' | 'failed';
   payment_date: string;
 }
+status: 'paid' | 'pending' | 'failed';
+payment_date: string;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  email?: string; // Joined from auth.users usually
+  role: AppRole;
+  status: 'active' | 'blocked';
+  created_at?: string;
+}
+
+export interface SystemSetting {
+  key: string;
+  value: any;
+  updated_at: string;
+}
