@@ -1,0 +1,2 @@
+[functions.kiwify_webhook]
+verify_jwt = false

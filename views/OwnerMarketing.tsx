@@ -15,6 +15,30 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', description: '', discount_percent: 10, end_date: '' });
 
+  // AI State
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiResult, setAiResult] = useState('');
+
+  const handleGenerateAI = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+
+    // Simulação de IA (Mock) para MVP
+    // Em produção, isso chamaria uma Edge Function conectada ao OpenAI
+    setTimeout(() => {
+      const templates = [
+        `🔥 IMPERDÍVEL! ${aiPrompt}\n\nVenha conferir nossas novidades e saia renovado(a)! Agende seu horário agora mesmo pelo link na bio.\n\n#beleza #promoção #agendamais`,
+        `✨ Realce sua beleza com a gente! Hoje é dia de: ${aiPrompt}.\n\nTemos horários disponíveis para você brilhar. Não perca tempo e garanta sua vaga!\n\nLink no perfil! 👆`,
+        `📅 Agenda Aberta! O foco de hoje é: ${aiPrompt}.\n\nCuidar de você é a nossa prioridade. Clique no link e agende seu momento de cuidado.\n\n#cuidados #bemestar #salao`
+      ];
+      // Escolhe um aleatório
+      const randomText = templates[Math.floor(Math.random() * templates.length)];
+      setAiResult(randomText);
+      setIsGenerating(false);
+    }, 1500);
+  };
+
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,6 +137,86 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative">Fidelidade</p>
             <p className="text-3xl font-black text-slate-900 mt-1 relative">128</p>
           </div>
+        </div>
+
+        {/* Assistente de Marketing IA */}
+        <div className="bg-gradient-to-br from-white to-rose-50 p-6 rounded-[2rem] shadow-xl border border-rose-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <span className="material-symbols-outlined text-8xl text-primary-brand">auto_awesome</span>
+          </div>
+
+          <div className="flex items-center gap-3 mb-4 relative z-10">
+            <div className="size-10 rounded-xl bg-gradient-to-br from-primary-brand to-rose-500 flex items-center justify-center text-white shadow-red-glow">
+              <span className="material-symbols-outlined text-xl">auto_awesome</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 leading-none">Assistente de Marketing IA</h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">Crie textos incríveis para suas redes sociais.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 relative z-10">
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Qual o objetivo do post de hoje?</label>
+              <textarea
+                className="w-full bg-white rounded-2xl p-4 text-sm font-medium text-slate-700 border border-rose-100 focus:border-primary-brand focus:ring-4 focus:ring-primary-brand/10 outline-none transition-all placeholder:text-slate-300 resize-none h-24"
+                placeholder="Ex: Atrair clientes para horários vagos hoje a tarde..."
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {['Divulgar promoção', 'Aviso de feriado', 'Dica de beleza', 'Horários vagos'].map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setAiPrompt(tag)}
+                  className="whitespace-nowrap px-3 py-1.5 bg-white border border-rose-100 rounded-full text-[10px] font-bold text-slate-500 hover:text-primary-brand hover:border-primary-brand transition-colors"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleGenerateAI}
+              disabled={isGenerating}
+              className="w-full bg-primary-brand text-white font-black py-4 rounded-xl shadow-red-glow active:scale-95 transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
+            >
+              {isGenerating ? (
+                <>
+                  <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Criando Mágica...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">auto_awesome</span>
+                  Gerar Post com IA
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Resultado da IA */}
+          {aiResult && (
+            <div className="mt-6 pt-6 border-t border-rose-100 animate-in slide-in-from-bottom-4 fade-in">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resultado Gerado:</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(aiResult);
+                    alert('Texto copiado!');
+                  }}
+                  className="size-8 rounded-full bg-white border border-rose-100 flex items-center justify-center text-slate-400 hover:text-primary-brand hover:border-primary-brand transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">content_copy</span>
+                </button>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-rose-100 text-sm text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
+                {aiResult}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Botão Criar Nova Campanha */}
