@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BookingStep, Service, Professional, Product } from '../types';
 import { DAYS_OF_WEEK, TIME_SLOTS } from '../constants';
@@ -12,15 +11,19 @@ interface CustomerBookingWizardProps {
 }
 
 const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, initialServiceId, onLoyalty, onBack }) => {
-  // Safe guard: If salon is null/undefined (e.g. direct nav or refresh without persistence), show error/loading or redirect
+  // 1. Padronização do nome do estabelecimento para uso em todo o componente
+  const establishmentName = salon?.name || salon?.profiles?.name || 'Estabelecimento';
+
+  // Safe guard: Se o salão não existir, retorna erro
   if (!salon) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
-        <p className="text-slate-500 mb-4">Selecione um salão para continuar.</p>
+        <p className="text-slate-500 mb-4">Selecione um estabelecimento para continuar.</p>
         <button onClick={onBack} className="text-primary-brand font-bold">Voltar</button>
       </div>
     );
   }
+
   const [step, setStep] = useState<BookingStep>(BookingStep.Service);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -35,28 +38,25 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
   const [loading, setLoading] = useState(true);
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Fetch Data on Mount
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Services
         const { data: svcs } = await supabase.from('services').select('*').eq('establishment_id', salon.id);
         if (svcs) {
           setServices(svcs);
-          // Auto-select initial service if provided
           if (initialServiceId) {
             const found = svcs.find((s: any) => s.id === initialServiceId);
             if (found) setSelectedService(found);
           }
         }
 
-        // 2. Fetch Professionals
         const { data: pros } = await supabase.from('professionals').select('*').eq('establishment_id', salon.id);
         if (pros) setProfessionals(pros);
 
-        // 3. Fetch Products
         const { data: prods } = await supabase.from('products').select('*').eq('establishment_id', salon.id);
         if (prods) setProducts(prods);
 
@@ -69,24 +69,18 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
     fetchData();
   }, [salon.id, initialServiceId]);
 
-  // Fetch Availability when Date or Pro changes
+  // Fetch Availability
   useEffect(() => {
     const fetchAvailability = async () => {
-      // Simple logic: Fetch all appointments for the date and disable slots
-      // In a real app, this should filter by professional if selected, or check any pro if none selected (complex)
-      // For MVP: We will filter by professional IF selected, otherwise show all slots (or check all pros availability - complex)
-      // MVP Simplification: If no pro selected, we show slots available for ANY pro (hard to do without backend logic).
-      // Let's enforce Pro selection? Or just fetch appointments for that salon on that date.
-
       let query = supabase
         .from('appointments')
         .select('time')
         .eq('establishment_id', salon.id)
         .eq('date', selectedDate)
-        .neq('status', 'cancelled'); // Don't count cancelled
+        .neq('status', 'cancelled');
 
       if (selectedPro) {
-        query = query.eq('professional_name', selectedPro.name); // Using name as foreign key in this MVP schema is risky but consistent with current insert
+        query = query.eq('professional_name', selectedPro.name); // Using name as fallback/placeholder logic as per previous version
       }
 
       const { data } = await query;
@@ -123,16 +117,11 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
     }
   };
 
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
   const handleBooking = async () => {
     setLoading(true);
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
-
-      if (!salon?.id) throw new Error('Dados do estabelecimento não encontrados. Reinicie o agendamento.');
 
       const { error } = await supabase.from('appointments').insert({
         user_id: user.id,
@@ -141,27 +130,25 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
         professional_name: selectedPro?.name,
         professional_id: selectedPro?.id,
         service_id: selectedService?.id,
-        client_name: user?.user_metadata?.name || 'Cliente App', // Fallback for name
+        client_name: user?.user_metadata?.name || 'Cliente App',
         date: selectedDate,
         time: selectedTime,
         price: totalPrice,
-        status: 'pending' // Changed to pending for flow correctness
+        status: 'pending'
       });
 
       if (error) throw error;
-
-      // Show success modal
       setLoading(false);
       setShowSuccessModal(true);
 
     } catch (error) {
       console.error('Erro ao agendar:', error);
-      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-      alert(`Erro ao realizar agendamento: ${errorMessage}`);
+      alert(`Erro ao realizar agendamento.`);
       setLoading(false);
     }
   };
 
+  // --- MODAL DE SUCESSO ---
   if (showSuccessModal) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
@@ -173,7 +160,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
             </div>
             <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Agendamento Confirmado!</h2>
             <p className="text-slate-500 font-medium text-sm mb-8 leading-relaxed">
-              Seu horário foi reservado com sucesso no <strong>{salon?.name || salon?.profiles?.name || 'Salão'}</strong>.
+              Seu horário foi reservado com sucesso no <strong>{establishmentName}</strong>.
             </p>
 
             <div className="w-full bg-slate-50 rounded-2xl p-4 mb-8 border border-slate-100">
@@ -187,10 +174,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
               </div>
             </div>
 
-            <button
-              onClick={onBack}
-              className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all"
-            >
+            <button onClick={onBack} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all">
               Voltar ao Início
             </button>
           </div>
@@ -199,7 +183,6 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
     );
   }
 
-  // Render Loading State
   if (loading && !services.length) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -228,7 +211,8 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
             <span className="inline-flex items-center gap-1 bg-primary-brand/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-xs font-bold text-white mb-2 shadow-lg">
               <span className="material-symbols-outlined text-[14px]">star</span> 5.0
             </span>
-            <h2 className="text-3xl font-black text-white leading-tight mb-1 tracking-tighter">{salon?.name || salon?.profiles?.name || 'Salão'}</h2>
+            {/* --- NOME DO ESTABELECIMENTO NO TOQUE --- */}
+            <h2 className="text-3xl font-black text-white leading-tight mb-1 tracking-tighter">{establishmentName}</h2>
             <p className="text-gray-300 text-sm flex items-center gap-1 font-medium">
               <span className="material-symbols-outlined text-[16px] text-primary-brand">location_on</span>
               {salon?.address || 'Endereço não informado'}
@@ -257,7 +241,6 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
       </div>
 
       <main className="w-full max-w-md mx-auto flex flex-col pt-4">
-
         {step === BookingStep.Service && (
           <section className="px-5 space-y-4">
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
@@ -295,45 +278,31 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
                     </div>
                   </div>
                 ))}
-              {services.filter(s => selectedCategory === 'Todos' || s.category.toLowerCase().includes(selectedCategory.toLowerCase()) || (selectedCategory === 'Combos' && s.category.toLowerCase().includes('combo'))).length === 0 && !loading && (
-                <div className="text-center p-8 text-slate-400">Nenhum serviço encontrado nesta categoria.</div>
-              )}
             </div>
           </section>
         )}
 
-        {/* Professional Step */}
         {step === BookingStep.Professional && (
           <section className="px-5 space-y-4">
             <h3 className="font-bold text-lg text-slate-900">Escolha o Profissional</h3>
             <div className="grid grid-cols-2 gap-4">
-              {/* Option to select 'Any Professional' could be added here */}
               {professionals.map(pro => (
                 <div
                   key={pro.id}
                   onClick={() => setSelectedPro(pro)}
                   className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${selectedPro?.id === pro.id ? 'border-primary-brand bg-rose-50/30' : 'border-slate-100 bg-white'}`}
                 >
-                  <img src={pro.image || 'https://i.pravatar.cc/150'} alt={pro.name} onError={(e: any) => e.target.src = 'https://i.pravatar.cc/150'} className="w-16 h-16 rounded-full object-cover mb-3 mx-auto" />
+                  <img src={pro.image || 'https://i.pravatar.cc/150'} alt={pro.name} className="w-16 h-16 rounded-full object-cover mb-3 mx-auto" />
                   <div className="text-center">
                     <h4 className="font-bold text-slate-900">{pro.name}</h4>
                     <p className="text-xs text-slate-500">{pro.role}</p>
-                    <div className="flex items-center justify-center gap-1 mt-2">
-                      {/* Performance could be calculated from reviews in future */}
-                      <span className="material-symbols-outlined text-amber-500 text-[14px] material-symbols-filled">star</span>
-                      <span className="text-xs font-bold">{pro.performance || '5.0'}</span>
-                    </div>
                   </div>
                 </div>
               ))}
-              {professionals.length === 0 && (
-                <div className="col-span-2 text-center p-8 text-slate-400">Nenhum profissional disponível.</div>
-              )}
             </div>
           </section>
         )}
 
-        {/* Date & Time Step */}
         {step === BookingStep.DateTime && (
           <section className="px-5 space-y-6">
             <div>
@@ -345,13 +314,9 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
                   for (let i = 0; i < 14; i++) {
                     const d = new Date(today);
                     d.setDate(today.getDate() + i);
-                    const dateStr = d.toLocaleDateString('en-CA'); // YYYY-MM-DD
-                    const dayNum = d.getDate();
-                    const weekDay = d.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase().slice(0, 3);
-
-                    days.push({ date: dateStr, day: dayNum, short: weekDay });
+                    const dateStr = d.toLocaleDateString('en-CA');
+                    days.push({ date: dateStr, day: d.getDate(), short: d.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase().slice(0, 3) });
                   }
-
                   return days.map(d => (
                     <button
                       key={d.date}
@@ -376,12 +341,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
                       key={time}
                       disabled={isBlocked}
                       onClick={() => setSelectedTime(time)}
-                      className={`py-2 rounded-xl text-sm font-bold border-2 transition-all ${isBlocked
-                        ? 'bg-slate-100 text-slate-300 border-transparent cursor-not-allowed decoration-slice line-through'
-                        : selectedTime === time
-                          ? 'bg-primary-brand text-white border-primary-brand'
-                          : 'bg-white text-slate-600 border-slate-100 hover:border-slate-200'
-                        }`}
+                      className={`py-2 rounded-xl text-sm font-bold border-2 transition-all ${isBlocked ? 'bg-slate-100 text-slate-300 border-transparent cursor-not-allowed line-through' : selectedTime === time ? 'bg-primary-brand text-white border-primary-brand' : 'bg-white text-slate-600 border-slate-100'}`}
                     >
                       {time}
                     </button>
@@ -392,7 +352,6 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
           </section>
         )}
 
-        {/* Add-ons Step */}
         {step === BookingStep.AddOns && (
           <section className="px-5 space-y-4">
             <h3 className="font-bold text-lg text-slate-900">Produtos & Adicionais</h3>
@@ -406,42 +365,31 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
                   <img src={product.image} className="size-16 rounded-xl object-cover" />
                   <div className="flex-1 px-3">
                     <h4 className="font-bold text-slate-900">{product.name}</h4>
-                    <p className="text-xs text-slate-400">{product.brand}</p>
-                    <p className="text-primary-brand font-black text-sm mt-1">R$ {product.price}</p>
-                  </div>
-                  <div className={`size-6 rounded-full border-2 flex items-center justify-center ${selectedProducts.find(p => p.id === product.id) ? 'bg-primary-brand border-primary-brand text-white' : 'border-slate-200'}`}>
-                    {selectedProducts.find(p => p.id === product.id) && <span className="material-symbols-outlined text-sm">check</span>}
+                    <p className="text-primary-brand font-black text-sm">R$ {product.price}</p>
                   </div>
                 </div>
               ))}
             </div>
           </section>
         )}
+
         {step === BookingStep.Summary && (
           <section className="px-5 py-4">
             <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-card">
-              <h3 className="text-slate-900 font-black text-lg mb-4 border-b border-slate-50 pb-4">Conferir Agendamento</h3>
+              {/* --- NOME DO ESTABELECIMENTO NO RESUMO --- */}
+              <h3 className="text-slate-900 font-black text-lg mb-4 border-b border-slate-50 pb-4">{establishmentName}</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-slate-900 text-sm font-black">{selectedService?.name || 'Nenhum serviço'}</p>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter">Profissional: {selectedPro?.name || 'Qualquer'}</p>
+                    <p className="text-slate-900 text-sm font-black">{selectedService?.name}</p>
+                    <p className="text-slate-400 text-xs font-bold uppercase">Profissional: {selectedPro?.name || 'Qualquer'}</p>
                   </div>
                   <span className="text-slate-900 text-sm font-black">R$ {selectedService?.price.toFixed(2)}</span>
                 </div>
-                {selectedProducts.map(p => (
-                  <div key={p.id} className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-700 text-sm font-bold">{p.name}</p>
-                      <p className="text-slate-400 text-[10px] font-bold uppercase">Produto Adicional</p>
-                    </div>
-                    <span className="text-slate-900 text-sm font-bold">R$ {p.price.toFixed(2)}</span>
-                  </div>
-                ))}
                 <div className="flex items-center gap-3 pt-6 mt-2 border-t border-slate-50">
                   <div className="flex items-center gap-2 text-primary-brand bg-rose-50 px-4 py-2 rounded-2xl">
                     <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                    <span className="text-xs font-black">{selectedDate} • {selectedTime || '--:--'}</span>
+                    <span className="text-xs font-black">{selectedDate.split('-').reverse().join('/')} • {selectedTime}</span>
                   </div>
                 </div>
               </div>
@@ -450,17 +398,16 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
         )}
       </main>
 
-      {/* Footer Fixo */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 px-5 py-5 pb-8">
         <div className="max-w-md mx-auto w-full flex items-center justify-between gap-4">
           <div className="flex flex-col">
-            <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Valor Total</span>
+            <span className="text-slate-400 text-[10px] font-black uppercase">Valor Total</span>
             <span className="text-slate-900 text-2xl font-black tracking-tighter">R$ {totalPrice.toFixed(2)}</span>
           </div>
           <button
             onClick={step === BookingStep.Summary ? handleBooking : nextStep}
             disabled={(step === BookingStep.Service && !selectedService) || loading}
-            className={`flex-1 h-16 rounded-[2rem] flex items-center justify-center gap-2 text-white font-black text-lg shadow-red-glow transition-all active:scale-95 disabled:opacity-50 ${step === BookingStep.Summary ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-primary-brand'}`}
+            className={`flex-1 h-16 rounded-[2rem] flex items-center justify-center gap-2 text-white font-black text-lg shadow-red-glow transition-all ${step === BookingStep.Summary ? 'bg-emerald-500' : 'bg-primary-brand'}`}
           >
             {step === BookingStep.Summary ? (loading ? 'Agendando...' : 'Confirmar') : 'Continuar'}
             <span className="material-symbols-outlined font-black">arrow_forward</span>
