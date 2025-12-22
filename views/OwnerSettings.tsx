@@ -50,6 +50,10 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
         setEstablishment(est);
         setSlug(est.slug || '');
         setHistory(est.history || ''); // Fetch history
+        // Prioritize establishment address, then profile address
+        if (est.address_full) {
+          setAddress(est.address_full);
+        }
       }
     }
     setLoading(false);
