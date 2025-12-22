@@ -61,7 +61,7 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
 
     const updates = {
       name,
-      address,
+      // address: address, // Removed: Address belongs to Establishment
       description,
       avatar_url: avatarUrl,
       updated_at: new Date().toISOString()
