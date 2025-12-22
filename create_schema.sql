@@ -1,8 +1,11 @@
 -- 1. Tabela de Profissionais
 create table if not exists professionals (
   id uuid default gen_random_uuid() primary key,
-  name text not null,
-  role text not null,
+  email TEXT,
+  phone TEXT,
+  birth_date DATE,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'customer',
   commission integer default 0,
   image text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -84,12 +87,22 @@ create policy "Public read products" on products for select using (true);
 create policy "Auth all products" on products for all using (auth.role() = 'authenticated');
 
 -- SEED DATA (Dados Iniciais)
-insert into services (name, duration, price, description) values 
-('Corte de Cabelo', 45, 50.00, 'Corte masculino completo.'),
-('Barba', 30, 35.00, 'Barba desenhada.'),
-('Corte + Barba', 60, 80.00, 'Combo completo.');
+-- 6. Tabela de Campanhas
+create table if not exists campaigns (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  description text,
+  content text, 
+  discount_percent integer,
+  start_date date default CURRENT_DATE,
+  end_date date,
+  status text default 'draft', -- draft, active, ended
+  usage_count integer default 0,
+  establishment_id uuid references establishments(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 
-insert into professionals (name, role, commission, image) values 
-('João Silva', 'Barbeiro Master', 50, 'https://i.pravatar.cc/150?u=joao'),
-('Carlos Souza', 'Barbeiro', 40, 'https://i.pravatar.cc/150?u=carlos'),
-('Ana Pereira', 'Manicure', 60, 'https://i.pravatar.cc/150?u=ana');
+-- RLS Campanhas
+alter table campaigns enable row level security;
+create policy "Auth all campaigns" on campaigns for all using (auth.role() = 'authenticated');
+

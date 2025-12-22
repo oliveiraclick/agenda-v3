@@ -66,7 +66,7 @@ const AuthLogin: React.FC<AuthLoginProps> = ({ onLogin, onForgotPassword, onSign
 
          if (msg === 'Invalid login credentials') {
             msg = loginMethod === 'phone'
-               ? 'Telefone não encontrado. Verifique ou cadastre-se.'
+               ? 'Telefone não encontrado ou senha incorreta. Se acabou de criar, tente novamente.'
                : 'E-mail ou senha incorretos.';
          }
 
@@ -77,7 +77,7 @@ const AuthLogin: React.FC<AuthLoginProps> = ({ onLogin, onForgotPassword, onSign
    };
 
    return (
-      <div className="min-h-screen flex flex-col justify-center p-6 relative overflow-hidden bg-[#F8FAFC]">
+      <div className="h-screen w-screen flex flex-col justify-center items-center p-6 relative overflow-hidden bg-[#F8FAFC]">
          {/* Background Gradients & Blobs */}
          <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
             <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-primary-brand/10 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '8s' }} />

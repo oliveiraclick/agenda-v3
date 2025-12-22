@@ -130,3 +130,29 @@ export interface PromoCode {
   active: boolean;
   created_at: string;
 }
+
+export interface LoyaltyCard {
+  id: string;
+  user_id: string;
+  establishment_id: string;
+  stamps: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoyaltyReward {
+  id: string;
+  establishment_id: string;
+  title: string;
+  description: string;
+  cost: number;
+  active: boolean;
+  created_at: string;
+}
+
+export interface LoyaltyRedemption {
+  id: string;
+  user_id: string;
+  reward_id: string;
+  redeemed_at: string;
+}

@@ -93,6 +93,7 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
       alert('Erro ao salvar: ' + error.message);
     } else {
       alert('Configurações salvas com sucesso!');
+      onBack();
     }
   };
 

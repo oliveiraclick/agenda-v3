@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Agende Mais</string>
+    <string name="title_activity_main">Agende Mais</string>
+    <string name="package_name">io.agendemais.app</string>
+    <string name="custom_url_scheme">io.agendemais.app</string>
+</resources>

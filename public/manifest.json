@@ -1,15 +1,61 @@
 {
     "name": "Agende Mais - Sistema de Agendamento",
     "short_name": "Agende Mais",
+    "description": "Agende serviços de beleza e bem-estar com facilidade. Encontre salões, barbeiros e profissionais perto de você.",
+    "id": "/",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
+    "orientation": "portrait",
+    "background_color": "#f8fafc",
     "theme_color": "#e11d48",
+    "categories": [
+        "beauty",
+        "lifestyle",
+        "productivity"
+    ],
     "icons": [
         {
             "src": "/icon.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshot-mobile-1.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Tela Inicial"
+        },
+        {
+            "src": "/screenshot-mobile-2.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Seleção de Perfil"
+        },
+        {
+            "src": "/screenshot-mobile-3.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Dashboard"
+        },
+        {
+            "src": "/screenshot-mobile-4.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Cadastro de Cliente"
+        },
+        {
+            "src": "/screenshot-mobile-5.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Cadastro de Empresa"
         }
     ]
 }

@@ -27,16 +27,22 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Fetch Establishments
+      // 1. Fetch Establishments with Profile Name
       const { data, error } = await supabase
         .from('establishments')
-        .select('*');
+        .select(`
+          *,
+          profiles:owner_id (name)
+        `);
 
       if (error) throw error;
 
       if (data) {
         const mappedData = data.map(item => ({
           ...item,
+          // Use profile name if available (Consistency Fix)
+          // @ts-ignore
+          name: item.profiles?.name || item.name || 'Meu Negócio',
           avatar_url: item.image_url || item.avatar_url || 'https://picsum.photos/seed/business/400/250',
           address: item.address || 'Localização não informada'
         }));

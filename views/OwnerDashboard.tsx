@@ -13,6 +13,8 @@ const OwnerDashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
 
+  const [establishmentId, setEstablishmentId] = useState<string | null>(null);
+
   // Form State
   const [newAppointment, setNewAppointment] = useState({
     client_name: '',
@@ -26,32 +28,36 @@ const OwnerDashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  const fetchAppointments = async () => {
+    const { data: appts } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+    if (appts) setAppointments(appts);
+    setLoading(false);
+  };
+
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(profileData);
 
-      // Fetch establishment for name
-      const { data: est } = await supabase.from('establishments').select('name').eq('owner_id', user.id).maybeSingle();
+      // Fetch establishment for name AND ID
+      const { data: est } = await supabase.from('establishments').select('id, name').eq('owner_id', user.id).maybeSingle();
+
       if (est) {
-        setProfile(prev => ({ ...prev, company_name: est.name }));
+        setEstablishmentId(est.id);
+        // FORCE USE OF PROFILE NAME as requested by user ("Busque do mesmo lugar")
+        // We ignore est.name for display purposes to match the Profile view
+        setProfile(prev => ({ ...prev, company_name: profileData.name }));
       }
+
+      const { data: pros } = await supabase.from('professionals').select('*');
+      if (pros) setProfessionals(pros);
+
+      const { data: servs } = await supabase.from('services').select('*');
+      if (servs) setServices(servs);
+
+      fetchAppointments();
     }
-
-    const { data: pros } = await supabase.from('professionals').select('*');
-    if (pros) setProfessionals(pros);
-
-    const { data: servs } = await supabase.from('services').select('*');
-    if (servs) setServices(servs);
-
-    fetchAppointments();
-  };
-
-  const fetchAppointments = async () => {
-    const { data: appts } = await supabase.from('appointments').select('*').order('date', { ascending: true });
-    if (appts) setAppointments(appts);
-    setLoading(false);
   };
 
   const handleDateClick = (date: Date) => {
@@ -63,11 +69,16 @@ const OwnerDashboard: React.FC = () => {
       return alert('Preencha todos os campos obrigatórios');
     }
 
+    if (!establishmentId) {
+      return alert('Erro: Estabelecimento não identificado. Recarregue a página.');
+    }
+
     const dateStr = currentDate.toLocaleDateString('en-CA');
     const service = services.find(s => s.id === newAppointment.service_id);
 
     const { error } = await supabase.from('appointments').insert([
       {
+        establishment_id: establishmentId,
         client_name: newAppointment.client_name,
         service_id: newAppointment.service_id,
         service_name: service?.name,

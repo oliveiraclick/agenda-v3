@@ -12,6 +12,7 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newPro, setNewPro] = useState({ name: '', role: '', commission: 0, image: '' });
+  const [editingPro, setEditingPro] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
 
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
@@ -25,11 +26,26 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
     if (!user) return;
 
     // 1. Get Establishment ID
-    const { data: est } = await supabase
+    let { data: est } = await supabase
       .from('establishments')
       .select('id')
       .eq('owner_id', user.id)
       .maybeSingle();
+
+    // Auto-create if not exists
+    if (!est) {
+      // Fetch profile to get name
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+      const defaultName = profile?.name ? `Espaço ${profile.name.split(' ')[0]}` : 'Meu Negócio';
+
+      const { data: newEst, error: createError } = await supabase
+        .from('establishments')
+        .insert([{ owner_id: user.id, name: defaultName, slug: user.id.slice(0, 8) }])
+        .select('id')
+        .single();
+
+      if (newEst) est = newEst;
+    }
 
     if (est) {
       setEstablishmentId(est.id);
@@ -44,27 +60,60 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
     setLoading(false);
   };
 
-  const handleAddProfessional = async () => {
+  const handleSaveProfessional = async () => {
     if (!newPro.name || !newPro.role) return alert('Preencha nome e cargo');
     if (!establishmentId) return alert('Estabelecimento não encontrado.');
 
-    const { error } = await supabase.from('professionals').insert([
-      {
+    let error;
+
+    if (editingPro) {
+      // Update existing
+      const { error: updateError } = await supabase.from('professionals').update({
         name: newPro.name,
         role: newPro.role,
         commission: newPro.commission,
-        image: newPro.image || 'https://i.pravatar.cc/150?u=new',
-        establishment_id: establishmentId // Link to current salon
-      }
-    ]);
+        image: newPro.image
+      }).eq('id', editingPro.id);
+      error = updateError;
+    } else {
+      // Insert new
+      const { error: insertError } = await supabase.from('professionals').insert([
+        {
+          name: newPro.name,
+          role: newPro.role,
+          commission: newPro.commission,
+          image: newPro.image || 'https://i.pravatar.cc/150?u=new',
+          establishment_id: establishmentId
+        }
+      ]);
+      error = insertError;
+    }
 
     if (error) {
-      alert('Erro ao adicionar profissional');
+      alert('Erro ao salvar profissional');
     } else {
       setShowModal(false);
       setNewPro({ name: '', role: '', commission: 0, image: '' });
+      setEditingPro(null);
       fetchEstablishmentAndPros();
     }
+  };
+
+  const handleEditClick = (pro: any) => {
+    setEditingPro(pro);
+    setNewPro({
+      name: pro.name,
+      role: pro.role,
+      commission: pro.commission,
+      image: pro.image
+    });
+    setShowModal(true);
+  };
+
+  const handleNewClick = () => {
+    setEditingPro(null);
+    setNewPro({ name: '', role: '', commission: 0, image: '' });
+    setShowModal(true);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,7 +133,7 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
           <button onClick={onBack} className="material-symbols-outlined text-slate-500">arrow_back</button>
           <h1 className="text-xl font-bold">Minha Equipe</h1>
         </div>
-        <button onClick={() => setShowModal(true)} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
+        <button onClick={handleNewClick} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
       </header>
 
       <main className="p-4 space-y-5 pb-24 overflow-y-auto">
@@ -117,7 +166,7 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
                   <h3 className="font-bold text-base text-slate-900">{pro.name}</h3>
                   <p className="text-xs text-slate-500 font-medium">{pro.role}</p>
                 </div>
-                <button className="text-slate-300 hover:text-primary-brand"><span className="material-symbols-outlined">more_vert</span></button>
+                <button onClick={() => handleEditClick(pro)} className="text-primary-brand hover:text-rose-700 bg-rose-50 p-2 rounded-full transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
               </div>
 
               <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -139,7 +188,7 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-lg font-bold mb-4">Novo Profissional</h2>
+            <h2 className="text-lg font-bold mb-4">{editingPro ? 'Editar Profissional' : 'Novo Profissional'}</h2>
             <div className="space-y-4">
               <div className="flex justify-center mb-4">
                 <label className="relative cursor-pointer">
@@ -171,8 +220,8 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
                   onChange={e => setNewPro({ ...newPro, commission: Number(e.target.value) })}
                 />
               </div>
-              <button onClick={handleAddProfessional} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
-                Salvar Profissional
+              <button onClick={handleSaveProfessional} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
+                {editingPro ? 'Salvar Alterações' : 'Adicionar Profissional'}
               </button>
             </div>
           </div>

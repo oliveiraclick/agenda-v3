@@ -8,52 +8,63 @@ interface OwnerOverviewProps {
 }
 
 const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
+  const [stats, setStats] = useState({ revenue: 0, appointments: 0, customers: 0 });
+  const [nextAppointments, setNextAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Trial Logic
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [showTrialModal, setShowTrialModal] = useState(false);
 
+  // Establishment Creation Logic
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newEstName, setNewEstName] = useState('');
+
   useEffect(() => {
-    fetchDashboardData();
+    checkAndFetchData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const checkAndFetchData = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      // 1. Buscar dados do Estabelecimento (Trial)
-      if (user) {
-        const { data: est } = await supabase
-          .from('establishments')
-          .select('trial_ends_at')
-          .eq('owner_id', user.id)
-          .single();
+      // 1. Check if establishment exists and get Trial Data
+      const { data: est } = await supabase
+        .from('establishments')
+        .select('*')
+        .eq('owner_id', user.id)
+        .maybeSingle();
 
-        if (est && est.trial_ends_at) {
-          const end = new Date(est.trial_ends_at);
-          const now = new Date();
-          const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          setDaysRemaining(diff > 0 ? diff : 0);
+      if (!est) {
+        // Not found? Show modal to create explicitly
+        setShowCreateModal(true);
+        setLoading(false);
+        return;
+      }
 
-          // Show modal if strictly in trial (simple logic: active trial)
-          // In a real app we might use localStorage to only show once: localStorage.getItem('seen_pricing')
-          const seen = localStorage.getItem('seen_pricing_v3');
-          if (!seen && diff > 0) {
-            setShowTrialModal(true);
-          }
+      // 2. Trial Logic (if est exists)
+      if (est.trial_ends_at) {
+        const end = new Date(est.trial_ends_at);
+        const now = new Date();
+        const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        setDaysRemaining(diff > 0 ? diff : 0);
+
+        // Show modal if strictly in trial (simple logic: active trial)
+        const seen = localStorage.getItem('seen_pricing_v3');
+        if (!seen && diff > 0) {
+          setShowTrialModal(true);
         }
       }
 
-      // 2. Buscar agendamentos de hoje para as métricas
+      // 3. Fetch dashboard data
       const today = new Date().toISOString().split('T')[0];
-
-      // Usando client_name que já existe na tabela appointments para evitar erros de join com profiles
-      const { data: apps, error } = await supabase
+      const { data: apps } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          services (price, name)
-        `)
-        .eq('date', today);
+        .select(`*, services (price, name)`)
+        .eq('date', today)
+        .eq('establishment_id', est.id);
 
       if (apps) {
         // @ts-ignore
@@ -68,13 +79,40 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error("Erro ao carregar dashboard:", err);
     } finally {
-      setLoading(false);
+      if (!showCreateModal) setLoading(false);
     }
   };
 
   const handleCloseModal = () => {
     localStorage.setItem('seen_pricing_v3', 'true');
     setShowTrialModal(false);
+  };
+
+  const handleCreateEstablishment = async () => {
+    if (!newEstName.trim()) return alert('Digite o nome do seu negócio.');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Create with 30 days trial by default as well
+    const trialDays = 30;
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+
+    const { error } = await supabase.from('establishments').insert({
+      owner_id: user.id,
+      name: newEstName,
+      slug: (newEstName.toLowerCase().replace(/\s+/g, '-') + '-' + user.id.slice(0, 4)),
+      trial_ends_at: trialEndDate.toISOString(),
+      subscription_plan: 'trial'
+    });
+
+    if (error) {
+      alert('Erro ao criar estabelecimento: ' + error.message);
+    } else {
+      setShowCreateModal(false);
+      checkAndFetchData(); // Reload
+    }
   };
 
   return (
@@ -105,7 +143,7 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Hoje</p>
-            <p className="text-lg font-black text-emerald-400">R$ {stats.revenue.toFixed(0)}</p>
+            <p className="text-lg font-black text-emerald-400">R$ {stats.revenue.toFixed(2)}</p>
           </div>
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Agend.</p>
@@ -146,6 +184,13 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
         <section>
           <h3 className="text-lg font-bold mb-4 px-1 text-slate-900">Gestão</h3>
           <div className="grid grid-cols-3 gap-3">
+            <button onClick={() => onNavigate('services')} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-all">
+              <div className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center">
+                <span className="material-symbols-outlined">category</span>
+              </div>
+              <span className="text-xs font-bold text-slate-700">Serviços</span>
+            </button>
+
             <button onClick={() => onNavigate('marketing')} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-all">
               <div className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                 <span className="material-symbols-outlined">campaign</span>
@@ -238,7 +283,38 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
           </div>
         </div>
       )}
-    </div>
+
+      {/* MODAL DE CRIAÇÃO OBRIGATÓRIA DO ESTABELECIMENTO */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-slate-900/80 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+            <div className="size-20 rounded-full bg-primary-owner/10 flex items-center justify-center mx-auto mb-6 text-primary-owner">
+              <span className="material-symbols-outlined text-4xl">storefront</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 text-center mb-2">Bem-vindo(a)!</h2>
+            <p className="text-slate-500 text-center mb-8">Para começar, qual é o nome do seu negócio?</p>
+
+            <div className="space-y-4">
+              <input
+                autoFocus
+                placeholder="Ex: Barbearia do Mestre"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-primary-owner focus:ring-4 focus:ring-primary-owner/10 transition-all"
+                value={newEstName}
+                onChange={e => setNewEstName(e.target.value)}
+              />
+              <button
+                onClick={handleCreateEstablishment}
+                disabled={!newEstName.trim()}
+                className="w-full h-16 bg-primary-owner text-white rounded-2xl font-black text-lg shadow-xl shadow-primary-owner/30 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all"
+              >
+                Criar Meu Negócio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div >
   );
 };
 

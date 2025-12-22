@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatCurrency, parseCurrency } from '../lib/currency';
 
 interface OwnerServicesProps {
     onBack: () => void;
@@ -11,6 +12,7 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [newService, setNewService] = useState({ name: '', duration: 30, price: 0, description: '' });
+    const [editingService, setEditingService] = useState<any>(null);
 
     const [establishmentId, setEstablishmentId] = useState<string | null>(null);
 
@@ -36,27 +38,60 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
         setLoading(false);
     };
 
-    const handleAddService = async () => {
+    const handleSaveService = async () => {
         if (!newService.name || !newService.price) return alert('Preencha nome e preço');
         if (!establishmentId) return alert('Estabelecimento não encontrado.');
 
-        const { error } = await supabase.from('services').insert([
-            {
+        let error;
+
+        if (editingService) {
+            // Update
+            const { error: updateError } = await supabase.from('services').update({
                 name: newService.name,
                 duration: newService.duration,
                 price: newService.price,
-                description: newService.description,
-                establishment_id: establishmentId
-            }
-        ]);
+                description: newService.description
+            }).eq('id', editingService.id);
+            error = updateError;
+        } else {
+            // Insert
+            const { error: insertError } = await supabase.from('services').insert([
+                {
+                    name: newService.name,
+                    duration: newService.duration,
+                    price: newService.price,
+                    description: newService.description,
+                    establishment_id: establishmentId
+                }
+            ]);
+            error = insertError;
+        }
 
         if (error) {
-            alert('Erro ao adicionar serviço');
+            alert('Erro ao salvar serviço');
         } else {
             setShowModal(false);
             setNewService({ name: '', duration: 30, price: 0, description: '' });
+            setEditingService(null);
             fetchServices();
         }
+    };
+
+    const handleEditClick = (service: any) => {
+        setEditingService(service);
+        setNewService({
+            name: service.name,
+            duration: service.duration,
+            price: service.price,
+            description: service.description || ''
+        });
+        setShowModal(true);
+    };
+
+    const handleNewClick = () => {
+        setEditingService(null);
+        setNewService({ name: '', duration: 30, price: 0, description: '' });
+        setShowModal(true);
     };
 
     const handleDeleteService = async (id: string) => {
@@ -73,7 +108,7 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                     <button onClick={onBack} className="material-symbols-outlined text-slate-500">arrow_back</button>
                     <h1 className="text-xl font-bold">Serviços</h1>
                 </div>
-                <button onClick={() => setShowModal(true)} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
+                <button onClick={handleNewClick} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
             </header>
 
             <main className="p-4 space-y-4 pb-24 overflow-y-auto">
@@ -85,6 +120,7 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                                 <p className="text-xs text-slate-500">{s.description || 'Sem descrição'}</p>
                             </div>
                             <div className="flex items-center gap-2">
+                                <button onClick={() => handleEditClick(s)} className="text-primary-brand hover:text-rose-700 bg-rose-50 p-2 rounded-full transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
                                 <button onClick={() => handleDeleteService(s.id)} className="text-slate-300 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
                             </div>
                         </div>
@@ -103,7 +139,7 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
                     <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95">
-                        <h2 className="text-lg font-bold mb-4">Novo Serviço</h2>
+                        <h2 className="text-lg font-bold mb-4">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
                         <div className="space-y-4">
                             <input
                                 placeholder="Nome do Serviço"
@@ -121,10 +157,14 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                                 <div className="flex-1">
                                     <label className="text-xs font-bold text-slate-500 ml-1 mb-1 block">Preço (R$)</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-primary-brand"
-                                        value={newService.price}
-                                        onChange={e => setNewService({ ...newService, price: Number(e.target.value) })}
+                                        value={formatCurrency(newService.price.toFixed(2).replace('.', ''))}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={e => {
+                                            const val = parseCurrency(e.target.value);
+                                            setNewService({ ...newService, price: val });
+                                        }}
                                     />
                                 </div>
                                 <div className="flex-1">
@@ -137,8 +177,8 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                                     />
                                 </div>
                             </div>
-                            <button onClick={handleAddService} className="w-full bg-primary-brand text-white font-bold py-4 rounded-xl shadow-red-glow active:scale-95 transition-all">
-                                Salvar Serviço
+                            <button onClick={handleSaveService} className="w-full bg-primary-brand text-white font-bold py-4 rounded-xl shadow-red-glow active:scale-95 transition-all">
+                                {editingService ? 'Salvar Alterações' : 'Salvar Serviço'}
                             </button>
                         </div>
                     </div>

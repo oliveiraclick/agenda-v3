@@ -14,6 +14,7 @@ import CustomerRegister from './views/CustomerRegister';
 import OwnerOverview from './views/OwnerOverview';
 import OwnerDashboard from './views/OwnerDashboard';
 import OwnerTeam from './views/OwnerTeam';
+import OwnerServices from './views/OwnerServices';
 import OwnerInventory from './views/OwnerInventory';
 import OwnerFinancial from './views/OwnerFinancial';
 import OwnerMarketing from './views/OwnerMarketing';
@@ -178,6 +179,8 @@ const App: React.FC = () => {
       case 'overview': return <OwnerOverview onNavigate={setOwnerView} />;
       case 'agenda': return <OwnerDashboard />;
       case 'team': return <OwnerTeam onBack={() => setOwnerView('overview')} />;
+      case 'services':
+        return <OwnerServices onBack={() => setOwnerView('overview')} />;
       case 'inventory': return <OwnerInventory onBack={() => setOwnerView('overview')} />;
       case 'financial': return <OwnerFinancial onBack={() => setOwnerView('overview')} />;
       case 'marketing': return <OwnerMarketing onBack={() => setOwnerView('overview')} />;
@@ -197,7 +200,7 @@ const App: React.FC = () => {
   const renderCustomerView = () => {
     switch (customerView) {
       case 'onboarding': return <Onboarding onStart={() => setCustomerView('signup_choice')} onLogin={() => setCustomerView('login')} />;
-      case 'login': return <AuthLogin onLogin={() => setCustomerView('portal')} onSignup={() => setCustomerView('signup_choice')} onForgot={() => setCustomerView('forgot_password')} onRegisterDetails={() => setCustomerView('auth_register')} onBack={() => setCustomerView('onboarding')} />;
+      case 'login': return <AuthLogin onLogin={() => setCustomerView('portal')} onSignup={() => setCustomerView('signup_choice')} onForgotPassword={() => setCustomerView('forgot_password')} onRegisterDetails={() => setCustomerView('auth_register')} onBack={() => setCustomerView('onboarding')} />;
       case 'signup_choice': return <AuthRegisterSelection onSelectRole={(role) => { setSignupRole(role); setCustomerView('signup'); }} onBack={() => setCustomerView('login')} />;
       case 'signup': return <AuthSignup role={signupRole} onBack={() => setCustomerView('signup_choice')} onComplete={() => setCustomerView('portal')} />;
       case 'auth_register': return <CustomerRegister onComplete={() => setCustomerView('portal')} />;

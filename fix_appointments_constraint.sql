@@ -1,7 +1,5 @@
--- A coluna 'scheduled_at' é antiga e está exigindo valor, mas agora usamos 'date' e 'time'.
--- Vamos torná-la opcional (nullable) para não travar o sistema.
+-- Make user_id nullable to allow manual appointments without registered users
+ALTER TABLE appointments ALTER COLUMN user_id DROP NOT NULL;
 
-alter table appointments alter column scheduled_at drop not null;
-
--- Opcional: Se quiser manter compatibilidade, podemos criar um trigger no futuro, 
--- mas por enquanto isso resolve o erro de inserção.
+-- Add client_name column if it doesn't represent the user_id relation (just in case, though schema likely has it)
+-- The error confirms user_id is the issue.
