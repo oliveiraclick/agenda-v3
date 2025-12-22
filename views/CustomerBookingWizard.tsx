@@ -132,6 +132,8 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      if (!salon?.id) throw new Error('Dados do estabelecimento não encontrados. Reinicie o agendamento.');
+
       const { error } = await supabase.from('appointments').insert({
         user_id: user.id,
         establishment_id: salon.id,
