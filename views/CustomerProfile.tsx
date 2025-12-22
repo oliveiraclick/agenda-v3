@@ -35,7 +35,7 @@ const CustomerProfile: React.FC<CustomerProfileProps> = ({ onBack, onLogout }) =
             if (data) {
                setProfile(data);
                setName(data.name || '');
-               setPhone(data.phone || '');
+               setPhone(data.phone || data.telefone || ''); // Dual check
             }
          }
       } catch (error) {
@@ -80,7 +80,11 @@ const CustomerProfile: React.FC<CustomerProfileProps> = ({ onBack, onLogout }) =
          const { data: { user } } = await supabase.auth.getUser();
          const { error } = await supabase
             .from('profiles')
-            .update({ name, phone })
+            .update({
+               name,
+               phone: phone,
+               telefone: phone // Dual write
+            })
             .eq('id', user?.id);
 
          if (error) throw error;

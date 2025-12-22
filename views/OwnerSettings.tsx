@@ -77,7 +77,8 @@ const OwnerSettings: React.FC<OwnerSettingsProps> = ({ onBack }) => {
         history, // Save history
         logo_url: avatarUrl,
         address_full: address,
-        owner_id: profile.id
+        owner_id: profile.id,
+        name: name // Updated name
       };
 
       if (establishment) {
