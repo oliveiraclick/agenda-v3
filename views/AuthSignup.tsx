@@ -99,34 +99,9 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
 
          // TRATAMENTO ESPECIAL: Usuário já existe (Auto-Login ou Recuperação)
          if (authError && authError.message.includes('already registered')) {
-            console.log("Usuário já existe no Auth. Tentando recuperar...");
-
-            // Tenta login para ver se a senha bate (é o mesmo dono do telefone)
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-               email: finalEmail,
-               password: finalPassword
-            });
-
-            if (signInError) {
-               // Senha não confere ou outro erro -> Telefone duplicado real
-               throw new Error('Este número já tem uma conta. Faça login.');
-            }
-
-            // Login funcionou! Agora verificamos se é um "Zumbi" (Auth sem Profile)
-            // Verificamos no banco público
-            const { data: profileExists, error: rpcError } = await supabase
-               .rpc('check_phone_exists', { phone_number: phone });
-
-            if (!profileExists) {
-               // É UM ZUMBI! (Auth existe, mas Profile foi apagado no reset)
-               // Vamos permitir prosseguir, usando os dados do login para recriar o profile.
-               console.log("Conta Zumbi detectada (Auth sem Perfil). Recriando perfil...");
-               authData = signInData;
-               authError = null;
-            } else {
-               // Perfil existe mesmo -> Duplicado real
-               throw new Error('Este número já está cadastrado. Faça login.');
-            }
+            // Se chegou aqui, é porque o e-mail (telefone@agenda) bateu.
+            // O RPC acima já deveria ter pego, mas se falhou, aqui pegamos pelo Auth.
+            throw new Error('Este número já tem uma conta. Se o sistema foi resetado, apague o usuário no Supabase Auth.');
          }
 
          if (authError) throw authError;
