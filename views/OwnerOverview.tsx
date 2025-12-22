@@ -8,9 +8,8 @@ interface OwnerOverviewProps {
 }
 
 const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
-  const [stats, setStats] = useState({ revenue: 0, appointments: 0, customers: 0 });
-  const [nextAppointments, setNextAppointments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [showTrialModal, setShowTrialModal] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -19,7 +18,32 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // 1. Buscar agendamentos de hoje para as métricas
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Buscar dados do Estabelecimento (Trial)
+      if (user) {
+        const { data: est } = await supabase
+          .from('establishments')
+          .select('trial_ends_at')
+          .eq('owner_id', user.id)
+          .single();
+
+        if (est && est.trial_ends_at) {
+          const end = new Date(est.trial_ends_at);
+          const now = new Date();
+          const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          setDaysRemaining(diff > 0 ? diff : 0);
+
+          // Show modal if strictly in trial (simple logic: active trial)
+          // In a real app we might use localStorage to only show once: localStorage.getItem('seen_pricing')
+          const seen = localStorage.getItem('seen_pricing_v3');
+          if (!seen && diff > 0) {
+            setShowTrialModal(true);
+          }
+        }
+      }
+
+      // 2. Buscar agendamentos de hoje para as métricas
       const today = new Date().toISOString().split('T')[0];
 
       // Usando client_name que já existe na tabela appointments para evitar erros de join com profiles
@@ -48,11 +72,26 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
     }
   };
 
+  const handleCloseModal = () => {
+    localStorage.setItem('seen_pricing_v3', 'true');
+    setShowTrialModal(false);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto pb-24">
+    <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto pb-24 view-transition">
       {/* Header do Gestor */}
-      <header className="p-6 bg-slate-900 text-white rounded-b-[3rem] shadow-2xl">
-        <div className="flex justify-between items-center mb-8">
+      <header className="p-6 bg-slate-900 text-white rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+        {/* Trial Banner inside Header */}
+        {daysRemaining !== null && daysRemaining > 0 && (
+          <div className="absolute top-0 left-0 w-full bg-gradient-to-r from-orange-400 to-rose-500 py-1 px-4 text-center shadow-lg">
+            <p className="text-[10px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-sm">timer</span>
+              Testando: {daysRemaining} dias restantes
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center mb-8 mt-6">
           <div>
             <h1 className="text-2xl font-black tracking-tighter">Dashboard</h1>
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Gestão do Negócio</p>
@@ -66,7 +105,7 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Hoje</p>
-            <p className="text-lg font-black text-emerald-400">€{stats.revenue}</p>
+            <p className="text-lg font-black text-emerald-400">R$ {stats.revenue.toFixed(0)}</p>
           </div>
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Agend.</p>
@@ -159,6 +198,46 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
           </div>
         </section>
       </main>
+
+      {/* MODAL DE EXPLICAÇÃO DA COBRANÇA */}
+      {showTrialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleCloseModal} />
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="size-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="material-symbols-outlined text-4xl text-emerald-600">verified</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 text-center mb-2 leading-tight">Você ganhou<br />30 dias grátis!</h2>
+            <p className="text-center text-slate-500 font-medium mb-6">
+              Aproveite todas as funcionalidades sem compromisso.
+            </p>
+
+            <div className="bg-slate-50 rounded-2xl p-5 mb-6 space-y-3 border border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Após o período de teste:</p>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600 font-medium">Plano Base (Sistema)</span>
+                <span className="font-bold text-slate-900">R$ 29,90</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600 font-medium">Por Profissional</span>
+                <span className="font-bold text-slate-900">+ R$ 10,00</span>
+              </div>
+              <div className="border-t border-slate-200 pt-2 mt-2">
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  *Cobrança mensal automática somente após o fim do teste. Cancele quando quiser.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleCloseModal}
+              className="w-full bg-primary-brand py-4 rounded-2xl text-white font-black text-lg shadow-lg shadow-primary-brand/30 active:scale-95 transition-all"
+            >
+              Começar Agora
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

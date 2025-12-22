@@ -104,7 +104,25 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
 
             // Sucesso!
             if (role === 'owner') {
-               setSuccessMessage('Sua conta empresarial foi criada com sucesso!');
+               // CRIAR ESTABELECIMENTO PADRÃO (30 DIAS GRÁTIS)
+               const trialDays = 30;
+               const trialEndDate = new Date();
+               trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+
+               const { error: estError } = await supabase
+                  .from('establishments')
+                  .insert([
+                     {
+                        owner_id: data.user.id,
+                        name: name, // Usa o nome do dono/empresa
+                        trial_ends_at: trialEndDate.toISOString(),
+                        subscription_plan: 'trial'
+                     }
+                  ]);
+
+               if (estError) console.error('Error creating establishment:', estError);
+
+               setSuccessMessage('Sua conta empresarial foi criada com 30 dias grátis!');
                setSuccess(true);
             } else {
                onComplete();

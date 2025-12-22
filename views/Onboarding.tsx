@@ -36,6 +36,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onStart, onLogin }) => {
                </button>
                <button onClick={onLogin} className="w-full h-12 text-slate-500 dark:text-slate-300 font-bold">Já tenho uma conta</button>
             </div>
+
+            <div className="mt-6 text-center">
+               <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 opacity-50 select-none">v1.0.2</span>
+            </div>
          </div>
       </div>
    );
