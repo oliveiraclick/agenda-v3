@@ -34,6 +34,8 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
+
   // Fetch Data on Mount
   useEffect(() => {
     const fetchData = async () => {
@@ -252,39 +254,46 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
       </div>
 
       <main className="w-full max-w-md mx-auto flex flex-col pt-4">
+
         {step === BookingStep.Service && (
           <section className="px-5 space-y-4">
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-              {['Todos', 'Cabelo', 'Barba', 'Combos'].map((cat, i) => (
-                <button key={cat} className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${i === 0 ? 'bg-primary-brand text-white shadow-red-glow' : 'bg-white text-slate-400 border border-slate-100'}`}>
+              {['Todos', 'Cabelo', 'Barba', 'Combos'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-primary-brand text-white shadow-red-glow' : 'bg-white text-slate-400 border border-slate-100'}`}
+                >
                   {cat}
                 </button>
               ))}
             </div>
             <div className="space-y-4">
-              {services.map(service => (
-                <div
-                  key={service.id}
-                  onClick={() => setSelectedService(service)}
-                  className={`group relative flex items-center p-5 rounded-[2rem] bg-white border-2 transition-all cursor-pointer shadow-sm ${selectedService?.id === service.id ? 'border-primary-brand shadow-card' : 'border-slate-50'}`}
-                >
-                  <div className="flex-1">
-                    <h4 className="text-slate-900 font-black text-base">{service.name}</h4>
-                    <p className="text-slate-400 text-xs mt-1 font-medium">{service.description}</p>
-                    <p className="text-slate-500 text-[10px] font-bold mt-2 flex items-center gap-1.5 uppercase">
-                      <span className="material-symbols-outlined text-[14px] text-primary-brand">schedule</span> {service.duration} min
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-3 pl-4">
-                    <span className="text-slate-900 font-black text-lg tracking-tighter">R${service.price}</span>
-                    <div className={`size-6 rounded-full flex items-center justify-center transition-all ${selectedService?.id === service.id ? 'bg-primary-brand text-white' : 'bg-slate-50 border border-slate-200'}`}>
-                      {selectedService?.id === service.id && <span className="material-symbols-outlined text-[18px]">check</span>}
+              {services
+                .filter(s => selectedCategory === 'Todos' || s.category.toLowerCase().includes(selectedCategory.toLowerCase()) || (selectedCategory === 'Combos' && s.category.toLowerCase().includes('combo')))
+                .map(service => (
+                  <div
+                    key={service.id}
+                    onClick={() => setSelectedService(service)}
+                    className={`group relative flex items-center p-5 rounded-[2rem] bg-white border-2 transition-all cursor-pointer shadow-sm ${selectedService?.id === service.id ? 'border-primary-brand shadow-card' : 'border-slate-50'}`}
+                  >
+                    <div className="flex-1">
+                      <h4 className="text-slate-900 font-black text-base">{service.name}</h4>
+                      <p className="text-slate-400 text-xs mt-1 font-medium">{service.description}</p>
+                      <p className="text-slate-500 text-[10px] font-bold mt-2 flex items-center gap-1.5 uppercase">
+                        <span className="material-symbols-outlined text-[14px] text-primary-brand">schedule</span> {service.duration} min
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-3 pl-4">
+                      <span className="text-slate-900 font-black text-lg tracking-tighter">R${service.price}</span>
+                      <div className={`size-6 rounded-full flex items-center justify-center transition-all ${selectedService?.id === service.id ? 'bg-primary-brand text-white' : 'bg-slate-50 border border-slate-200'}`}>
+                        {selectedService?.id === service.id && <span className="material-symbols-outlined text-[18px]">check</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {services.length === 0 && !loading && (
-                <div className="text-center p-8 text-slate-400">Nenhum serviço disponível.</div>
+                ))}
+              {services.filter(s => selectedCategory === 'Todos' || s.category.toLowerCase().includes(selectedCategory.toLowerCase()) || (selectedCategory === 'Combos' && s.category.toLowerCase().includes('combo'))).length === 0 && !loading && (
+                <div className="text-center p-8 text-slate-400">Nenhum serviço encontrado nesta categoria.</div>
               )}
             </div>
           </section>
