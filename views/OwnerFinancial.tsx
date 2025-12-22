@@ -79,8 +79,7 @@ const OwnerFinancial: React.FC<OwnerFinancialProps> = ({ onBack }) => {
   const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const balance = totalRevenue - totalExpenses;
 
-  // Chart Data (Mocking daily data based on appointments for simplicity or real aggregation)
-  // For MVP, let's aggregate appointments by day for the last 7 days
+  // Chart Data
   const getChartData = () => {
     const days = 7;
     const data = [];
@@ -100,7 +99,7 @@ const OwnerFinancial: React.FC<OwnerFinancialProps> = ({ onBack }) => {
   };
 
   const chartData = getChartData();
-  const maxVal = Math.max(...chartData.map(d => d.value), 100); // Avoid div by zero
+  const maxVal = Math.max(...chartData.map(d => d.value), 100); // Default scale 100 if empty
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white flex flex-col max-w-md mx-auto relative view-transition">
