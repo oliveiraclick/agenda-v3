@@ -13,6 +13,7 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', brand: '', price: 0, cost: 0, stock: 0, image: '' });
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
 
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
@@ -52,27 +53,62 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
     }
   };
 
-  const handleAddProduct = async () => {
+  const handleSaveProduct = async () => {
     if (!newProduct.name || !newProduct.price) return alert('Preencha nome e preço');
     if (!establishmentId) return alert('Estabelecimento não encontrado.');
 
-    const { error } = await supabase.from('products').insert([
-      {
+    let error;
+
+    if (editingProduct) {
+      // Update existing
+      const { error: updateError } = await supabase.from('products').update({
         name: newProduct.name,
         description: newProduct.brand,
         price: newProduct.price,
-        image: newProduct.image || 'https://via.placeholder.com/150',
-        establishment_id: establishmentId // Link to current salon
-      }
-    ]);
+        image: newProduct.image
+      }).eq('id', editingProduct.id);
+      error = updateError;
+    } else {
+      // Insert new
+      const { error: insertError } = await supabase.from('products').insert([
+        {
+          name: newProduct.name,
+          description: newProduct.brand,
+          price: newProduct.price,
+          image: newProduct.image || 'https://via.placeholder.com/150',
+          establishment_id: establishmentId // Link to current salon
+        }
+      ]);
+      error = insertError;
+    }
 
     if (error) {
-      alert('Erro ao adicionar produto');
+      alert('Erro ao salvar produto');
     } else {
       setShowModal(false);
       setNewProduct({ name: '', brand: '', price: 0, cost: 0, stock: 0, image: '' });
+      setEditingProduct(null);
       fetchEstablishmentAndProducts();
     }
+  };
+
+  const handleEditClick = (product: any) => {
+    setEditingProduct(product);
+    setNewProduct({
+      name: product.name,
+      brand: product.description || '',
+      price: product.price,
+      cost: product.cost || 0,
+      stock: product.stock || 0,
+      image: product.image || ''
+    });
+    setShowModal(true);
+  };
+
+  const handleNewClick = () => {
+    setEditingProduct(null);
+    setNewProduct({ name: '', brand: '', price: 0, cost: 0, stock: 0, image: '' });
+    setShowModal(true);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +129,7 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
             <button onClick={onBack} className="material-symbols-outlined text-slate-500">arrow_back</button>
             <h1 className="text-xl font-bold">Estoque</h1>
           </div>
-          <button onClick={() => setShowModal(true)} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
+          <button onClick={handleNewClick} className="size-10 bg-primary-brand text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-symbols-outlined">add</span></button>
         </div>
         <div className="flex w-full items-center rounded-xl bg-slate-50 border border-slate-200 h-12 px-4 focus-within:ring-1 focus-within:ring-primary-brand transition-all">
           <span className="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -111,10 +147,11 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
               <div className="flex-1">
                 <h3 className="font-bold text-sm leading-tight text-slate-900">{p.name}</h3>
                 <p className="text-xs text-slate-500">{p.description}</p>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 justify-between">
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600">
                     Em estoque
                   </span>
+                  <button onClick={() => handleEditClick(p)} className="text-primary-brand hover:text-rose-700 bg-rose-50 p-2 rounded-full transition-colors"><span className="material-symbols-outlined text-sm">edit</span></button>
                 </div>
               </div>
             </div>
@@ -132,7 +169,7 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-lg font-bold mb-4">Novo Produto</h2>
+            <h2 className="text-lg font-bold mb-4">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
             <div className="space-y-4">
               <div className="flex justify-center mb-4">
                 <label className="relative cursor-pointer">
@@ -173,8 +210,8 @@ const OwnerInventory: React.FC<OwnerInventoryProps> = ({ onBack }) => {
                   }}
                 />
               </div>
-              <button onClick={handleAddProduct} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
-                Salvar Produto
+              <button onClick={handleSaveProduct} className="w-full bg-primary-brand text-white font-bold py-4 rounded-2xl shadow-red-glow active:scale-95 transition-all">
+                {editingProduct ? 'Salvar Alterações' : 'Adicionar Produto'}
               </button>
             </div>
           </div>
