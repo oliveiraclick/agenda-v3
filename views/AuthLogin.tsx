@@ -66,7 +66,7 @@ const AuthLogin: React.FC<AuthLoginProps> = ({ onLogin, onForgotPassword, onSign
 
          if (msg === 'Invalid login credentials') {
             msg = loginMethod === 'phone'
-               ? 'Telefone não encontrado. Verifique ou cadastre-se.'
+               ? 'Telefone não encontrado ou senha incorreta. Se acabou de criar, tente novamente.'
                : 'E-mail ou senha incorretos.';
          }
 

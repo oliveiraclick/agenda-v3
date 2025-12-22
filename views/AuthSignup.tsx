@@ -38,8 +38,8 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
             setError('Telefone inválido.');
             return;
          }
-         finalEmail = `${cleanPhone}@agenda.app`; // Dummy email
-         finalPassword = cleanPhone; // Phone as password
+         finalEmail = `${cleanPhone}@cliente.agenda.app`; // Matching AuthLogin format
+         finalPassword = `pass_${cleanPhone}`; // Matching AuthLogin format
       } else {
          // Owner logic (keep checks)
          if (!email || !password || !name) {
