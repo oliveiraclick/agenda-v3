@@ -20,6 +20,11 @@ TRUNCATE TABLE public.expenses CASCADE;
 TRUNCATE TABLE public.products CASCADE;
 TRUNCATE TABLE public.services CASCADE;
 TRUNCATE TABLE public.professionals CASCADE;
+TRUNCATE TABLE public.notifications CASCADE; -- Adicionado para evitar erro FK
 TRUNCATE TABLE public.establishments CASCADE;
 
--- AGORA TENTE APAGAR OS USUÁRIOS NO PAINEL DO SUPABASE NOVAMENTE.
+-- 4. (OPÇÃO NUCLEAR) APAGA TODOS OS USUÁRIOS DE LOGIN
+-- Só rode isso se quiser zerar ABSOLUTAMENTE TUDO, inclusive contas de login.
+DELETE FROM auth.users;
+
+-- AGORA O SISTEMA ESTÁ 100% LIMPO.
