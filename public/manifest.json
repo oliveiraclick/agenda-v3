@@ -1,15 +1,24 @@
 {
     "name": "Agende Mais - Sistema de Agendamento",
     "short_name": "Agende Mais",
+    "description": "Agende serviços de beleza e bem-estar com facilidade. Encontre salões, barbeiros e profissionais perto de você.",
+    "id": "/",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
+    "orientation": "portrait",
+    "background_color": "#f8fafc",
     "theme_color": "#e11d48",
+    "categories": [
+        "beauty",
+        "lifestyle",
+        "productivity"
+    ],
     "icons": [
         {
             "src": "/icon.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 }
