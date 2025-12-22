@@ -1,18 +1,37 @@
--- Forçar a adição das colunas que podem estar faltando
-alter table appointments 
-add column if not exists client_name text,
-add column if not exists service_id uuid references services(id),
-add column if not exists service_name text,
-add column if not exists professional_id uuid references professionals(id),
-add column if not exists date date,
-add column if not exists time time,
-add column if not exists price numeric(10,2),
-add column if not exists status text default 'pending';
+-- Corrigindo Tabela de Agendamentos (Appointments) e RLS
+-- O erro ocorre porque os agendamentos também precisam estar vinculados ao ESTABELECIMENTO
+-- para que o dono possa vê-los (e não apenas o cliente que criou).
 
--- Garantir que as colunas não sejam nulas onde não devem (opcional, mas bom para integridade)
--- alter table appointments alter column client_name set not null;
--- alter table appointments alter column date set not null;
--- alter table appointments alter column time set not null;
+-- 1. Cria a coluna establishment_id se não existir
+ALTER TABLE public.appointments 
+ADD COLUMN IF NOT EXISTS establishment_id UUID REFERENCES public.establishments(id);
 
--- Recarregar o cache do schema (útil para o Supabase reconhecer a mudança na hora)
-NOTIFY pgrst, 'reload schema';
+-- 2. Habilita RLS
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+
+-- 3. Limpa políticas antigas
+DROP POLICY IF EXISTS "Auth all appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Users can manage their establishment appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Customers can see their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Owners can see their establishment appointments" ON public.appointments;
+
+-- 4. Cria novas políticas de acesso
+
+-- REGRA 1: Cliente vê seus próprios agendamentos (user_id = auth.uid())
+CREATE POLICY "Customers can see and create their own appointments"
+ON public.appointments
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- REGRA 2: Dono vê agendamentos do seu estabelecimento
+CREATE POLICY "Owners can see and manage their establishment appointments"
+ON public.appointments
+FOR ALL
+USING (
+  establishment_id IN (
+    SELECT id FROM public.establishments WHERE owner_id = auth.uid()
+  )
+);
+
+-- Como as permissões se somam (OR), se for dono OU cliente do agendamento, vai funcionar.

@@ -136,13 +136,14 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
         user_id: user.id,
         establishment_id: salon.id,
         service_name: selectedService?.name,
-        professional_name: selectedPro?.name, // Ideally use ID, but schema uses name temporarily? Checked schema, uses names or IDs? Checked types.ts: professional_id is optional? View file shows professional_name insert. Sticking to current working schema.
+        professional_name: selectedPro?.name,
         professional_id: selectedPro?.id,
         service_id: selectedService?.id,
+        client_name: user?.user_metadata?.name || 'Cliente App', // Fallback for name
         date: selectedDate,
         time: selectedTime,
         price: totalPrice,
-        status: 'scheduled'
+        status: 'pending' // Changed to pending for flow correctness
       });
 
       if (error) throw error;
