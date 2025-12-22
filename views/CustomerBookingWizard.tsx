@@ -173,7 +173,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
             </div>
             <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Agendamento Confirmado!</h2>
             <p className="text-slate-500 font-medium text-sm mb-8 leading-relaxed">
-              Seu horário foi reservado com sucesso no <strong>{salon?.name}</strong>.
+              Seu horário foi reservado com sucesso no <strong>{salon?.name || salon?.profiles?.name || 'Salão'}</strong>.
             </p>
 
             <div className="w-full bg-slate-50 rounded-2xl p-4 mb-8 border border-slate-100">
@@ -228,7 +228,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
             <span className="inline-flex items-center gap-1 bg-primary-brand/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-xs font-bold text-white mb-2 shadow-lg">
               <span className="material-symbols-outlined text-[14px]">star</span> 5.0
             </span>
-            <h2 className="text-3xl font-black text-white leading-tight mb-1 tracking-tighter">{salon?.name || 'Salão'}</h2>
+            <h2 className="text-3xl font-black text-white leading-tight mb-1 tracking-tighter">{salon?.name || salon?.profiles?.name || 'Salão'}</h2>
             <p className="text-gray-300 text-sm flex items-center gap-1 font-medium">
               <span className="material-symbols-outlined text-[16px] text-primary-brand">location_on</span>
               {salon?.address || 'Endereço não informado'}
