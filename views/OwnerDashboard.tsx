@@ -13,6 +13,8 @@ const OwnerDashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
 
+  const [establishmentId, setEstablishmentId] = useState<string | null>(null);
+
   // Form State
   const [newAppointment, setNewAppointment] = useState({
     client_name: '',
@@ -38,12 +40,16 @@ const OwnerDashboard: React.FC = () => {
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(profileData);
 
-      // Fetch establishment for name
-      const { data: est } = await supabase.from('establishments').select('name').eq('owner_id', user.id).maybeSingle();
-      if (est && est.name && est.name !== 'Meu Negócio' && est.name !== 'Minha Barbearia') {
-        setProfile(prev => ({ ...prev, company_name: est.name }));
-      } else {
-        setProfile(prev => ({ ...prev, company_name: profileData.name }));
+      // Fetch establishment for name AND ID
+      const { data: est } = await supabase.from('establishments').select('id, name').eq('owner_id', user.id).maybeSingle();
+
+      if (est) {
+        setEstablishmentId(est.id);
+        if (est.name && est.name !== 'Meu Negócio' && est.name !== 'Minha Barbearia') {
+          setProfile(prev => ({ ...prev, company_name: est.name }));
+        } else {
+          setProfile(prev => ({ ...prev, company_name: profileData.name }));
+        }
       }
 
       const { data: pros } = await supabase.from('professionals').select('*');
@@ -65,11 +71,16 @@ const OwnerDashboard: React.FC = () => {
       return alert('Preencha todos os campos obrigatórios');
     }
 
+    if (!establishmentId) {
+      return alert('Erro: Estabelecimento não identificado. Recarregue a página.');
+    }
+
     const dateStr = currentDate.toLocaleDateString('en-CA');
     const service = services.find(s => s.id === newAppointment.service_id);
 
     const { error } = await supabase.from('appointments').insert([
       {
+        establishment_id: establishmentId,
         client_name: newAppointment.client_name,
         service_id: newAppointment.service_id,
         service_name: service?.name,
