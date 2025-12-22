@@ -35,3 +35,12 @@ ON public.establishments
 FOR UPDATE
 TO authenticated 
 USING (auth.uid() = owner_id);
+
+-- PROBLEM FOUND: No SELECT policy!
+-- Allow everyone (authenticated or public) to read establishments
+DROP POLICY IF EXISTS "Establishments are viewable by everyone" ON public.establishments;
+
+CREATE POLICY "Establishments are viewable by everyone" 
+ON public.establishments 
+FOR SELECT 
+USING (true);
