@@ -10,6 +10,8 @@ interface AuthSignupProps {
 
 const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'customer' }) => {
    const [name, setName] = useState('');
+   const [phone, setPhone] = useState('');
+   const [birthDate, setBirthDate] = useState('');
    const [email, setEmail] = useState('');
    const [password, setPassword] = useState('');
    const [showPassword, setShowPassword] = useState(false);
@@ -20,15 +22,56 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
 
    const handleSignup = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!email || !password || !name) {
-         setError('Preencha todos os campos.');
-         return;
+
+      let finalEmail = email;
+      let finalPassword = password;
+
+      // Logic for Simplified Customer Signup
+      if (role === 'customer') {
+         if (!name || !phone || !birthDate) {
+            setError('Preencha nome, telefone e data de nascimento.');
+            return;
+         }
+         // Auto-generate credentials
+         const cleanPhone = phone.replace(/\D/g, '');
+         if (cleanPhone.length < 10) {
+            setError('Telefone inválido.');
+            return;
+         }
+         finalEmail = `${cleanPhone}@agenda.app`; // Dummy email
+         finalPassword = cleanPhone; // Phone as password
+      } else {
+         // Owner logic (keep checks)
+         if (!email || !password || !name) {
+            setError('Preencha todos os campos.');
+            return;
+         }
+         finalEmail = email;
+         finalPassword = password;
       }
 
       setLoading(true);
       setError('');
 
       try {
+         // 0. Verificar se o telefone já existe (via RPC segura)
+         if (role === 'customer') {
+            const { data: phoneExists, error: rpcError } = await supabase
+               .rpc('check_phone_exists', { phone_number: phone });
+
+            if (rpcError) {
+               console.error('Erro ao verificar telefone:', rpcError);
+               // Segue em frente se der erro no RPC (falha aberta), ou bloqueia? Melhor bloquear se for crítico.
+               // Mas se o RPC não existir ainda, vai bloquear tudo. Vamos logar e seguir com Auth check.
+            }
+
+            if (phoneExists) {
+               setError('Este telefone já está cadastrado. Faça login.');
+               setLoading(false);
+               return;
+            }
+         }
+
          // 1. Criar usuário no Auth com metadados de Role
          let authData;
          let authError;
@@ -39,8 +82,8 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
          );
 
          const signUpPromise = supabase.auth.signUp({
-            email,
-            password,
+            email: finalEmail,
+            password: finalPassword,
             options: {
                data: {
                   name: name,
@@ -56,17 +99,9 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
 
          // TRATAMENTO ESPECIAL: Usuário já existe (Auto-Login)
          if (authError && authError.message.includes('already registered')) {
-            const signInResponse = await supabase.auth.signInWithPassword({
-               email,
-               password
-            });
-
-            if (signInResponse.error) {
-               throw new Error('Conta já existe. Se for você, faça login.');
-            }
-
-            authData = signInResponse.data;
-            authError = null;
+            // Se chegou aqui, é porque o e-mail (telefone@agenda) bateu.
+            // O RPC acima já deveria ter pego, mas se falhou, aqui pegamos pelo Auth.
+            throw new Error('Este número já tem uma conta. Faça login.');
          }
 
          if (authError) throw authError;
@@ -82,24 +117,29 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
 
          if (data.user) {
             // 2. Criar o perfil na tabela pública imediatamente
+            // Envia chaves duplicadas para garantir compatibilidade com colunas portuguesas/inglesas
             const { error: profileError } = await supabase
                .from('profiles')
                .upsert({
                   id: data.user.id,
                   name: name,
                   role: role,
-                  email: email,
+                  email: finalEmail,
+                  // Compatibilidade Dupla
+                  phone: phone,
+                  telefone: phone,
+                  birth_date: birthDate,
+                  data_nascimento: birthDate,
                   updated_at: new Date(),
                });
 
             if (profileError) {
                console.error("Erro no Profile:", profileError.message);
-               // Não lança erro fatal se for apenas RLS impedindo leitura, mas loga
             }
 
             // 3. Login Explícito (Garantia)
             if (data.session) {
-               await supabase.auth.signInWithPassword({ email, password });
+               await supabase.auth.signInWithPassword({ email: finalEmail, password: finalPassword });
             }
 
             // Sucesso!
@@ -160,6 +200,8 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
                   </p>
                </div>
 
+
+
                <form onSubmit={handleSignup} className="space-y-5">
                   <div className="space-y-2">
                      <div className="relative group">
@@ -182,19 +224,46 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
                      </div>
                   </div>
 
+                  {role === 'owner' && (
+                     <div className="space-y-2">
+                        <div className="relative group">
+                           <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                              <div className="flex items-center px-4">
+                                 <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">mail</span>
+                                 <div className="flex-1 py-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">E-mail Profissional</label>
+                                    <input
+                                       type="email"
+                                       value={email}
+                                       onChange={e => setEmail(e.target.value)}
+                                       className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                                       placeholder="empresa@email.com"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  )}
+
                   <div className="space-y-2">
                      <div className="relative group">
                         <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
                            <div className="flex items-center px-4">
-                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">mail</span>
+                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">smartphone</span>
                               <div className="flex-1 py-2">
-                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">E-mail Profissional</label>
+                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Celular / WhatsApp</label>
                                  <input
-                                    type="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
+                                    value={phone}
+                                    onChange={e => {
+                                       let v = e.target.value.replace(/\D/g, '');
+                                       v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+                                       v = v.replace(/(\d)(\d{4})$/, '$1-$2');
+                                       setPhone(v);
+                                    }}
+                                    maxLength={15}
                                     className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
-                                    placeholder="empresa@email.com"
+                                    placeholder="(11) 99999-9999"
                                  />
                               </div>
                            </div>
@@ -202,36 +271,59 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
                      </div>
                   </div>
 
-                  <div className="space-y-2">
-                     <div className="relative group">
-                        <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
-                           <div className="flex items-center px-4">
-                              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">lock</span>
-                              <div className="flex-1 py-2">
-                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Senha de Acesso</label>
-                                 <div className="flex items-center">
+                  {role === 'customer' && (
+                     <div className="space-y-2">
+                        <div className="relative group">
+                           <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                              <div className="flex items-center px-4">
+                                 <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">cake</span>
+                                 <div className="flex-1 py-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Data de Nascimento</label>
                                     <input
-                                       type={showPassword ? 'text' : 'password'}
-                                       value={password}
-                                       onChange={e => setPassword(e.target.value)}
+                                       type="date"
+                                       value={birthDate}
+                                       onChange={e => setBirthDate(e.target.value)}
                                        className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
-                                       placeholder="Mínimo 6 caracteres"
                                     />
-                                    <button
-                                       type="button"
-                                       onClick={() => setShowPassword(!showPassword)}
-                                       className="text-slate-400 hover:text-primary-brand transition-colors"
-                                    >
-                                       <span className="material-symbols-outlined text-xl">
-                                          {showPassword ? 'visibility' : 'visibility_off'}
-                                       </span>
-                                    </button>
                                  </div>
                               </div>
                            </div>
                         </div>
                      </div>
-                  </div>
+                  )}
+
+                  {role === 'owner' && (
+                     <div className="space-y-2">
+                        <div className="relative group">
+                           <div className="relative bg-white border border-slate-200 rounded-2xl p-1 transition-all group-focus-within:border-primary-brand group-focus-within:shadow-lg group-focus-within:shadow-primary-brand/10">
+                              <div className="flex items-center px-4">
+                                 <span className="material-symbols-outlined text-slate-400 group-focus-within:text-primary-brand transition-colors mr-3">lock</span>
+                                 <div className="flex-1 py-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Senha de Acesso</label>
+                                    <div className="flex items-center">
+                                       <input
+                                          type={showPassword ? 'text' : 'password'}
+                                          value={password}
+                                          onChange={e => setPassword(e.target.value)}
+                                          className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300 placeholder:font-normal"
+                                          placeholder="Mínimo 6 caracteres"
+                                       />
+                                       <button
+                                          type="button"
+                                          onClick={() => setShowPassword(!showPassword)}
+                                          className="text-slate-400 hover:text-primary-brand transition-colors"
+                                       >
+                                          <span className="material-symbols-outlined text-xl">
+                                             {showPassword ? 'visibility' : 'visibility_off'}
+                                          </span>
+                                       </button>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  )}
 
                   {error && (
                      <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center gap-3 animate-in slide-in-from-top-2">

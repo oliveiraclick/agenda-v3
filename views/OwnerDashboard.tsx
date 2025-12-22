@@ -26,6 +26,12 @@ const OwnerDashboard: React.FC = () => {
     fetchData();
   }, []);
 
+  const fetchAppointments = async () => {
+    const { data: appts } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+    if (appts) setAppointments(appts);
+    setLoading(false);
+  };
+
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -34,24 +40,20 @@ const OwnerDashboard: React.FC = () => {
 
       // Fetch establishment for name
       const { data: est } = await supabase.from('establishments').select('name').eq('owner_id', user.id).maybeSingle();
-      if (est) {
+      if (est && est.name && est.name !== 'Meu Negócio' && est.name !== 'Minha Barbearia') {
         setProfile(prev => ({ ...prev, company_name: est.name }));
+      } else {
+        setProfile(prev => ({ ...prev, company_name: profileData.name }));
       }
+
+      const { data: pros } = await supabase.from('professionals').select('*');
+      if (pros) setProfessionals(pros);
+
+      const { data: servs } = await supabase.from('services').select('*');
+      if (servs) setServices(servs);
+
+      fetchAppointments();
     }
-
-    const { data: pros } = await supabase.from('professionals').select('*');
-    if (pros) setProfessionals(pros);
-
-    const { data: servs } = await supabase.from('services').select('*');
-    if (servs) setServices(servs);
-
-    fetchAppointments();
-  };
-
-  const fetchAppointments = async () => {
-    const { data: appts } = await supabase.from('appointments').select('*').order('date', { ascending: true });
-    if (appts) setAppointments(appts);
-    setLoading(false);
   };
 
   const handleDateClick = (date: Date) => {

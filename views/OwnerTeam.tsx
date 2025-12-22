@@ -34,13 +34,13 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
 
     // Auto-create if not exists
     if (!est) {
-      const { data: newEst } = await supabase
+      // Fetch profile to get name
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+      const defaultName = profile?.name ? `Espaço ${profile.name.split(' ')[0]}` : 'Meu Negócio';
+
+      const { data: newEst, error: createError } = await supabase
         .from('establishments')
-        .insert({
-          owner_id: user.id,
-          name: 'Meu Negócio',
-          slug: `salao-${user.id.slice(0, 6)}` // Temporary slug to avoid violation
-        })
+        .insert([{ owner_id: user.id, name: defaultName, slug: user.id.slice(0, 8) }])
         .select('id')
         .single();
 

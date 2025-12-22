@@ -1,8 +1,11 @@
 -- 1. Tabela de Profissionais
 create table if not exists professionals (
   id uuid default gen_random_uuid() primary key,
-  name text not null,
-  role text not null,
+  email TEXT,
+  phone TEXT,
+  birth_date DATE,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'customer',
   commission integer default 0,
   image text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
