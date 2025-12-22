@@ -35,8 +35,34 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
       // Escolhe um aleatório
       const randomText = templates[Math.floor(Math.random() * templates.length)];
       setAiResult(randomText);
+      setAiResult(randomText);
       setIsGenerating(false);
     }, 1500);
+  };
+
+  const handleSaveAiResult = async () => {
+    if (!aiResult) return;
+    if (!establishmentId) return alert('Estabelecimento não encontrado.');
+
+    const { error } = await supabase.from('campaigns').insert([
+      {
+        name: `Campanha IA - ${new Date().toLocaleDateString()}`,
+        description: aiResult.slice(0, 50) + '...',
+        content: aiResult, // Assuming content column exists, or we use description
+        discount_percent: 0,
+        status: 'draft',
+        establishment_id: establishmentId
+      }
+    ]);
+
+    if (error) {
+      alert('Erro ao salvar campanha: ' + error.message);
+    } else {
+      alert('Campanha salva com sucesso! Veja na lista abaixo.');
+      setAiResult('');
+      setAiPrompt('');
+      fetchData();
+    }
   };
 
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
@@ -215,6 +241,13 @@ const OwnerMarketing: React.FC<OwnerMarketingProps> = ({ onBack }) => {
               <div className="bg-white p-4 rounded-2xl border border-rose-100 text-sm text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
                 {aiResult}
               </div>
+              <button
+                onClick={handleSaveAiResult}
+                className="w-full mt-3 bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">save</span>
+                Salvar como Campanha
+              </button>
             </div>
           )}
         </div>

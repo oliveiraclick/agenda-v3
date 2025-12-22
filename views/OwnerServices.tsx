@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatCurrency, parseCurrency } from '../lib/currency';
 
 interface OwnerServicesProps {
     onBack: () => void;
@@ -156,10 +157,14 @@ const OwnerServices: React.FC<OwnerServicesProps> = ({ onBack }) => {
                                 <div className="flex-1">
                                     <label className="text-xs font-bold text-slate-500 ml-1 mb-1 block">Preço (R$)</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-primary-brand"
-                                        value={newService.price}
-                                        onChange={e => setNewService({ ...newService, price: Number(e.target.value) })}
+                                        value={formatCurrency(newService.price.toFixed(2).replace('.', ''))}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={e => {
+                                            const val = parseCurrency(e.target.value);
+                                            setNewService({ ...newService, price: val });
+                                        }}
                                     />
                                 </div>
                                 <div className="flex-1">

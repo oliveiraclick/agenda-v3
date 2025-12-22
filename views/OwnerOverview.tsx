@@ -109,7 +109,7 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
           <div className="grid grid-cols-3 gap-3">
             <button onClick={() => onNavigate('services')} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-all">
               <div className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center">
-                <span className="material-symbols-outlined">content_cut</span>
+                <span className="material-symbols-outlined">category</span>
               </div>
               <span className="text-xs font-bold text-slate-700">Serviços</span>
             </button>
