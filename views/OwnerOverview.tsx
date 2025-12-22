@@ -12,24 +12,41 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
   const [nextAppointments, setNextAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // New Start: Logic to force establishment creation
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newEstName, setNewEstName] = useState('');
+
   useEffect(() => {
-    fetchDashboardData();
+    checkAndFetchData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const checkAndFetchData = async () => {
     setLoading(true);
     try {
-      // 1. Buscar agendamentos de hoje para as métricas
-      const today = new Date().toISOString().split('T')[0];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      // Usando client_name que já existe na tabela appointments para evitar erros de join com profiles
-      const { data: apps, error } = await supabase
+      // 1. Check if establishment exists
+      const { data: est } = await supabase
+        .from('establishments')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!est) {
+        // Not found? Show modal to create explicitly
+        setShowCreateModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch dashboard data (only if est exists)
+      const today = new Date().toISOString().split('T')[0];
+      const { data: apps } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          services (price, name)
-        `)
-        .eq('date', today);
+        .select(`*, services (price, name)`)
+        .eq('date', today)
+        .eq('establishment_id', est.id); // Filter by est_id now that we enforced it
 
       if (apps) {
         // @ts-ignore
@@ -44,9 +61,30 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error("Erro ao carregar dashboard:", err);
     } finally {
-      setLoading(false);
+      if (!showCreateModal) setLoading(false);
     }
   };
+
+  const handleCreateEstablishment = async () => {
+    if (!newEstName.trim()) return alert('Digite o nome do seu negócio.');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('establishments').insert({
+      owner_id: user.id,
+      name: newEstName,
+      slug: (newEstName.toLowerCase().replace(/\s+/g, '-') + '-' + user.id.slice(0, 4))
+    });
+
+    if (error) {
+      alert('Erro ao criar estabelecimento: ' + error.message);
+    } else {
+      setShowCreateModal(false);
+      checkAndFetchData(); // Reload
+    }
+  };
+  // New End
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto pb-24">
@@ -166,7 +204,40 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
           </div>
         </section>
       </main>
-    </div>
+
+      {/* MODAL DE CRIAÇÃO OBRIGATÓRIA DO ESTABELECIMENTO */}
+      {
+        showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-slate-900/80 backdrop-blur-sm">
+            <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+              <div className="size-20 rounded-full bg-primary-owner/10 flex items-center justify-center mx-auto mb-6 text-primary-owner">
+                <span className="material-symbols-outlined text-4xl">storefront</span>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 text-center mb-2">Bem-vindo(a)!</h2>
+              <p className="text-slate-500 text-center mb-8">Para começar, qual é o nome do seu negócio?</p>
+
+              <div className="space-y-4">
+                <input
+                  autoFocus
+                  placeholder="Ex: Barbearia do Mestre"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-primary-owner focus:ring-4 focus:ring-primary-owner/10 transition-all"
+                  value={newEstName}
+                  onChange={e => setNewEstName(e.target.value)}
+                />
+                <button
+                  onClick={handleCreateEstablishment}
+                  disabled={!newEstName.trim()}
+                  className="w-full h-16 bg-primary-owner text-white rounded-2xl font-black text-lg shadow-xl shadow-primary-owner/30 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all"
+                >
+                  Criar Meu Negócio
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 
