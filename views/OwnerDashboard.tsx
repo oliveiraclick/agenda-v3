@@ -45,11 +45,9 @@ const OwnerDashboard: React.FC = () => {
 
       if (est) {
         setEstablishmentId(est.id);
-        if (est.name && est.name !== 'Meu Negócio' && est.name !== 'Minha Barbearia') {
-          setProfile(prev => ({ ...prev, company_name: est.name }));
-        } else {
-          setProfile(prev => ({ ...prev, company_name: profileData.name }));
-        }
+        // FORCE USE OF PROFILE NAME as requested by user ("Busque do mesmo lugar")
+        // We ignore est.name for display purposes to match the Profile view
+        setProfile(prev => ({ ...prev, company_name: profileData.name }));
       }
 
       const { data: pros } = await supabase.from('professionals').select('*');
