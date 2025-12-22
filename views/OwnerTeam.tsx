@@ -25,11 +25,26 @@ const OwnerTeam: React.FC<OwnerTeamProps> = ({ onBack }) => {
     if (!user) return;
 
     // 1. Get Establishment ID
-    const { data: est } = await supabase
+    let { data: est } = await supabase
       .from('establishments')
       .select('id')
       .eq('owner_id', user.id)
       .maybeSingle();
+
+    // Auto-create if not exists
+    if (!est) {
+      const { data: newEst } = await supabase
+        .from('establishments')
+        .insert({
+          owner_id: user.id,
+          name: 'Meu Negócio',
+          slug: `salao-${user.id.slice(0, 6)}` // Temporary slug to avoid violation
+        })
+        .select('id')
+        .single();
+
+      if (newEst) est = newEst;
+    }
 
     if (est) {
       setEstablishmentId(est.id);
