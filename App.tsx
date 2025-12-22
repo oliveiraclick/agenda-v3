@@ -197,7 +197,7 @@ const App: React.FC = () => {
   const renderCustomerView = () => {
     switch (customerView) {
       case 'onboarding': return <Onboarding onStart={() => setCustomerView('signup_choice')} onLogin={() => setCustomerView('login')} />;
-      case 'login': return <AuthLogin onLogin={() => setCustomerView('portal')} onSignup={() => setCustomerView('signup_choice')} onForgot={() => setCustomerView('forgot_password')} onRegisterDetails={() => setCustomerView('auth_register')} onBack={() => setCustomerView('onboarding')} />;
+      case 'login': return <AuthLogin onLogin={() => setCustomerView('portal')} onSignup={() => setCustomerView('signup_choice')} onForgotPassword={() => setCustomerView('forgot_password')} onRegisterDetails={() => setCustomerView('auth_register')} onBack={() => setCustomerView('onboarding')} />;
       case 'signup_choice': return <AuthRegisterSelection onSelectRole={(role) => { setSignupRole(role); setCustomerView('signup'); }} onBack={() => setCustomerView('login')} />;
       case 'signup': return <AuthSignup role={signupRole} onBack={() => setCustomerView('signup_choice')} onComplete={() => setCustomerView('portal')} />;
       case 'auth_register': return <CustomerRegister onComplete={() => setCustomerView('portal')} />;
