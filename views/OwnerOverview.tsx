@@ -66,7 +66,7 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Hoje</p>
-            <p className="text-lg font-black text-emerald-400">€{stats.revenue}</p>
+            <p className="text-lg font-black text-emerald-400">R$ {stats.revenue.toFixed(2)}</p>
           </div>
           <div className="bg-white/5 p-4 rounded-[2rem] border border-white/5 text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Agend.</p>
