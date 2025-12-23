@@ -40,9 +40,9 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
       if (data) {
         const mappedData = data.map(item => ({
           ...item,
-          // FIXED: Prioritize Establishment Name (item.name) over Owner Name
+          // FIXED: Prioritize Profile Name (Owner) as requested by user
           // @ts-ignore
-          name: item.name || item.profiles?.name || 'Meu Negócio',
+          name: item.profiles?.name || item.name || 'Meu Negócio',
           avatar_url: item.image_url || item.avatar_url || 'https://picsum.photos/seed/business/400/250',
           address: item.address || 'Localização não informada'
         }));
