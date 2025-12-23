@@ -174,7 +174,7 @@ const CustomerProfile: React.FC<CustomerProfileProps> = ({ onBack, onLogout }) =
                   <span className="material-symbols-outlined">logout</span>
                   Sair da Conta
                </button>
-               <p className="text-center text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest">Versão 1.0.4 - App Agenda</p>
+               <p className="text-center text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest">Versão 1.0.5 - App Agenda</p>
             </div>
          </main>
       </div>

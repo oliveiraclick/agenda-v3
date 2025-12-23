@@ -67,6 +67,8 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
             // Map DB columns to UI props
             mappedEstablishments = dbEstablishments.map(item => ({
                ...item,
+               // FIXED: Prioritize Profile Name (Owner) over Establishment Name
+               name: item.profiles?.name || item.name || 'Meu Negócio',
                image_url: item.image_url || 'https://picsum.photos/seed/shop/400/200',
                image: item.image_url || 'https://picsum.photos/seed/shop/400/200',
                rating: item.rating || 5.0,
