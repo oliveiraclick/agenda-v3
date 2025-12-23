@@ -53,7 +53,10 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ onNavigate, onSelectSal
          // 2. Get Establishments
          const { data: dbEstablishments, error } = await supabase
             .from('establishments')
-            .select('*');
+            .select(`
+                *,
+                profiles:owner_id (name)
+            `);
 
          if (error) {
             console.error('Error fetching establishments:', error);
