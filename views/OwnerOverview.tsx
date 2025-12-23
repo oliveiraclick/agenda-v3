@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { OwnerView } from '../types';
+import { slugify } from '../lib/utils';
 
 interface OwnerOverviewProps {
   onNavigate: (view: OwnerView) => void;
@@ -102,7 +103,7 @@ const OwnerOverview: React.FC<OwnerOverviewProps> = ({ onNavigate }) => {
     const { error } = await supabase.from('establishments').insert({
       owner_id: user.id,
       name: newEstName,
-      slug: (newEstName.toLowerCase().replace(/\s+/g, '-') + '-' + user.id.slice(0, 4)),
+      slug: `${slugify(newEstName)}-${user.id.slice(0, 4)}`,
       trial_ends_at: trialEndDate.toISOString(),
       subscription_plan: 'trial'
     });
