@@ -58,7 +58,7 @@ const AdminNotifications: React.FC = () => {
                         onChange={e => setAudience(e.target.value)}
                     >
                         <option value="all" className="text-slate-900">Todos</option>
-                        <option value="owners" className="text-slate-900">Donos de Salão</option>
+                        <option value="owners" className="text-slate-900">Usuários</option>
                         <option value="customers" className="text-slate-900">Clientes</option>
                     </select>
                     <button

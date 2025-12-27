@@ -29,7 +29,7 @@ const AdminActivityFeed: React.FC = () => {
                             {act.logo_url ? <img src={act.logo_url} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-slate-400">storefront</span>}
                         </div>
                         <div className="flex-1">
-                            <p className="text-sm font-bold text-slate-900">Novo salão: <span className="text-primary-brand">{act.name}</span></p>
+                            <p className="text-sm font-bold text-slate-900">Novo cliente: <span className="text-primary-brand">{act.name}</span></p>
                             <p className="text-xs text-slate-400">{new Date(act.created_at).toLocaleDateString('pt-BR')}</p>
                         </div>
                     </div>
