@@ -35,7 +35,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
 
    useEffect(() => {
       loadStats();
-   }, [selectedRange, customStartDate, customEndDate]);
+   }, [selectedRange, customStartDate, customEndDate, currentView]);
 
    const loadStats = async () => {
       // 1. Basic Counts (Salons & Users)
