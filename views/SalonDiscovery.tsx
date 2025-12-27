@@ -27,18 +27,22 @@ const SalonDiscovery: React.FC<SalonDiscoveryProps> = ({ onSelectSalon, onProfil
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Fetch Establishments with Profile Name
+      // 1. Fetch Establishments with Profile Name and Service Count
       const { data, error } = await supabase
         .from('establishments')
         .select(`
           *,
-          profiles:owner_id (name)
+          profiles:owner_id (name),
+          services (count)
         `);
 
       if (error) throw error;
 
       if (data) {
-        const mappedData = data.map(item => ({
+        // Filter: Only show establishments with at least 1 service
+        const visibleData = data.filter((item: any) => item.services?.[0]?.count > 0);
+
+        const mappedData = visibleData.map((item: any) => ({
           ...item,
           // FIXED: Prioritize Profile Name (Owner) as requested by user
           // @ts-ignore

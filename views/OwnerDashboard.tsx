@@ -266,6 +266,21 @@ const OwnerDashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* Visibility Warning */}
+      {!loading && services.length === 0 && (
+        <div className="mx-5 mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <div className="bg-amber-100 p-2 rounded-full text-amber-600 shrink-0">
+            <span className="material-symbols-outlined">visibility_off</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Seu perfil está oculto</h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Para aparecer na busca e receber agendamentos, você precisa cadastrar pelo menos um serviço.
+            </p>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 relative w-full max-w-md mx-auto px-5 pt-6 pb-10">
         <div className="mb-6">
           <h2 className="text-slate-900 text-xl font-black">Agendamentos</h2>

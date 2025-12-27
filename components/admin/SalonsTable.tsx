@@ -16,7 +16,7 @@ const SalonsTable: React.FC = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('establishments')
-            .select('*')
+            .select('*, services(count)')
             .order('created_at', { ascending: false });
 
         if (error) console.error('Error fetching salons:', error);
@@ -36,6 +36,21 @@ const SalonsTable: React.FC = () => {
         } else {
             setSalons(salons.map(s => s.id === id ? { ...s, status: newStatus as 'active' | 'blocked' | 'pending' } : s));
         }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o salão "${name}"? Essa ação não pode ser desfeita e apagará todos os dados vinculados.`)) return;
+
+        setLoading(true);
+        const { error } = await supabase.from('establishments').delete().eq('id', id);
+
+        if (error) {
+            alert('Erro ao excluir salão: ' + error.message);
+        } else {
+            alert('Salão excluído com sucesso.');
+            fetchSalons();
+        }
+        setLoading(false);
     };
 
     const grantFreeDays = async (id: string, currentPlan: string) => {
@@ -129,7 +144,7 @@ const SalonsTable: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${salon.subscription_plan === 'pro' ? 'bg-purple-100 text-purple-600' :
-                                            salon.subscription_plan === 'enterprise' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                                        salon.subscription_plan === 'enterprise' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
                                         }`}>
                                         {salon.subscription_plan || 'free'}
                                     </span>
@@ -139,6 +154,13 @@ const SalonsTable: React.FC = () => {
                                         }`}>
                                         {salon.status || 'active'}
                                     </span>
+                                    {/* @ts-ignore */}
+                                    {salon.services?.[0]?.count === 0 && (
+                                        <div className="flex items-center gap-1 mt-1 text-amber-500">
+                                            <span className="material-symbols-outlined text-[14px]">warning</span>
+                                            <span className="text-[9px] font-bold">Sem Serviços</span>
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="text-xs font-medium text-slate-500">
@@ -170,6 +192,13 @@ const SalonsTable: React.FC = () => {
                                             <span className="material-symbols-outlined text-[18px]">
                                                 {salon.status === 'blocked' ? 'lock_open' : 'lock'}
                                             </span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(salon.id, salon.name)}
+                                            title="Excluir Salão"
+                                            className="size-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">delete</span>
                                         </button>
                                     </div>
                                 </td>
