@@ -232,6 +232,9 @@ const App: React.FC = () => {
   if (isTrialExpired && currentRole === 'owner') {
     const [proCount, setProCount] = useState(0);
     const [loadingPrice, setLoadingPrice] = useState(true);
+    const [promoCode, setPromoCode] = useState('');
+    const [promoStatus, setPromoStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
+    const [promoMessage, setPromoMessage] = useState('');
 
     useEffect(() => {
       const fetchPros = async () => {
@@ -252,9 +255,49 @@ const App: React.FC = () => {
       fetchPros();
     }, []);
 
-    const basePrice = 29.00;
-    const proPrice = 10.00;
-    const total = basePrice + (proCount * proPrice);
+    const handleApplyPromo = async () => {
+      if (!promoCode) return;
+      setPromoStatus('validating');
+
+      try {
+        const { data, error } = await supabase.rpc('apply_promo_code', { input_code: promoCode });
+
+        if (error) throw error;
+
+        if (data && data.success) {
+          setPromoStatus('success');
+          setPromoMessage(`Código aplicado! +${data.days} dias.`);
+          // Refresh session/page to unlock
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
+          setPromoStatus('error');
+          setPromoMessage(data?.message || 'Código inválido.');
+        }
+      } catch (err) {
+        console.error(err);
+        setPromoStatus('error');
+        setPromoMessage('Erro ao validar.');
+      }
+    };
+
+    // Tiered Link Logic
+    let paymentLink = 'https://pay.kiwify.com.br/ZqDT7Lt'; // Base (Só Dono)
+    let planName = 'Plano Individual';
+    let planValue = 'R$ 29,90';
+
+    if (proCount >= 1 && proCount <= 3) {
+      paymentLink = 'https://pay.kiwify.com.br/7g8nGXE';
+      planName = 'Plano Equipe (Até 3)';
+      planValue = 'R$ 59,90'; // Exemplo
+    } else if (proCount >= 4 && proCount <= 5) {
+      paymentLink = 'https://pay.kiwify.com.br/JBDCjhG';
+      planName = 'Plano Business (Até 5)';
+      planValue = 'R$ 79,90'; // Exemplo
+    } else if (proCount >= 6) {
+      paymentLink = 'https://pay.kiwify.com.br/IG1QF2j';
+      planName = 'Plano Unlimited (Até 10)';
+      planValue = 'R$ 99,90'; // Exemplo
+    }
 
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 z-50 relative">
@@ -264,44 +307,65 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-2xl font-black text-slate-900 mb-2">Período Gratuito Encerrado</h2>
           <p className="text-slate-500 mb-6">
-            Para continuar gerenciando seu negócio, ative sua assinatura.
+            Para continuar usando a plataforma, ative seu plano.
           </p>
 
-          {/* Price Breakdown */}
+          {/* Plan Details */}
           <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left space-y-2 border border-slate-100">
             <div className="flex justify-between text-sm text-slate-600">
-              <span>Plano Base</span>
-              <span className="font-bold">R$ {basePrice.toFixed(2)}</span>
+              <span>Sua Equipe Atual</span>
+              <span className="font-bold">{proCount} Profissionais</span>
             </div>
-            <div className="flex justify-between text-sm text-slate-600">
-              <span>{proCount} Profissionais (x R$ {proPrice.toFixed(2)})</span>
-              <span className="font-bold">R$ {(proCount * proPrice).toFixed(2)}</span>
-            </div>
-            <div className="border-t border-slate-200 pt-2 flex justify-between text-base font-black text-slate-900">
-              <span>Total Mensal</span>
-              <span>R$ {total.toFixed(2)}</span>
+            <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
+              <span>{planName}</span>
+              <span>{planValue} /mês</span>
             </div>
           </div>
 
           <div className="space-y-3">
             <a
-              href="https://pay.kiwify.com.br/ZqDT7Lt"
+              href={paymentLink}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full py-4 bg-primary-brand text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-primary-brand/30"
             >
               Pagar Agora
             </a>
+
+            {/* Promo Code Input */}
+            <div className="pt-4 border-t border-slate-100 mt-4">
+              <p className="text-xs font-bold text-slate-500 mb-2 uppercase text-left">Tem um código promocional?</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="#CODIGO"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-bold uppercase outline-none focus:border-primary-brand"
+                  value={promoCode}
+                  onChange={e => setPromoCode(e.target.value)}
+                  disabled={promoStatus === 'success'}
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={!promoCode || promoStatus === 'validating' || promoStatus === 'success'}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs"
+                >
+                  {promoStatus === 'validating' ? '...' : 'Aplicar'}
+                </button>
+              </div>
+              {promoMessage && (
+                <p className={`text-xs font-bold mt-2 text-left ${promoStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {promoMessage}
+                </p>
+              )}
+            </div>
+
             <button
               onClick={() => supabase.auth.signOut()}
-              className="block w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+              className="block w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors text-sm"
             >
               Sair da Conta
             </button>
           </div>
-          <p className="text-xs text-slate-400 mt-6">
-            Após o pagamento, seu acesso será liberado automaticamente em alguns instantes.
-          </p>
         </div>
       </div>
     );
