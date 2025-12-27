@@ -57,8 +57,8 @@ const AdminUsersTable: React.FC = () => {
     };
 
     const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.role.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.role || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -105,18 +105,18 @@ const AdminUsersTable: React.FC = () => {
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <div className="size-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">
-                                            {user.name.charAt(0).toUpperCase()}
+                                            {(user.name || 'U').charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900 text-sm">{user.name}</p>
+                                            <p className="font-bold text-slate-900 text-sm">{user.name || 'Usuário sem nome'}</p>
                                             <p className="text-xs text-slate-400 font-medium truncate max-w-[150px]">{user.id}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${user.role === 'admin' ? 'bg-purple-100 text-purple-600' :
-                                            user.role === 'owner' ? 'bg-blue-100 text-blue-600' :
-                                                user.role === 'professional' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'
+                                        user.role === 'owner' ? 'bg-blue-100 text-blue-600' :
+                                            user.role === 'professional' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'
                                         }`}>
                                         {user.role}
                                     </span>
