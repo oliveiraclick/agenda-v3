@@ -171,6 +171,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
         client_name: user?.user_metadata?.name || 'Cliente App',
         date: selectedDate,
         time: selectedTime,
+        duration: selectedService?.duration || '30 min',
         price: totalPrice,
         status: 'pending'
       });
