@@ -38,7 +38,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onStart, onLogin }) => {
             </div>
 
             <div className="mt-6 text-center">
-               <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 opacity-50 select-none">v1.0.7</span>
+               <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 opacity-50 select-none">v1.0.8</span>
             </div>
          </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
+import { slugify } from '../lib/utils';
 
 interface AuthSignupProps {
    onBack: () => void;
@@ -56,8 +57,9 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
       try {
          // 0. Verificar se o telefone já existe (via RPC segura)
          if (role === 'customer') {
+            const cleanPhone = phone.replace(/\D/g, '');
             const { data: phoneExists, error: rpcError } = await supabase
-               .rpc('check_phone_exists', { phone_number: phone });
+               .rpc('check_phone_exists', { phone_number: cleanPhone });
 
             if (rpcError) {
                console.error('Erro ao verificar telefone:', rpcError);
@@ -155,6 +157,7 @@ const AuthSignup: React.FC<AuthSignupProps> = ({ onBack, onComplete, role = 'cus
                      {
                         owner_id: data.user.id,
                         name: name, // Usa o nome do dono/empresa
+                        slug: `${slugify(name)}-${data.user.id.slice(0, 4)}`,
                         trial_ends_at: trialEndDate.toISOString(),
                         subscription_plan: 'trial'
                      }
