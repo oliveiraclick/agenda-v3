@@ -35,8 +35,40 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [bookedIntervals, setBookedIntervals] = useState<{ start: number, end: number }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Helper: Time HH:mm to minutes
+  const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  // Helper: Duration string to minutes
+  const parseDuration = (duration: string | number): number => {
+    if (!duration) return 0;
+    if (typeof duration === 'number') return duration;
+
+    // Normalize: remove spaces, lowercase
+    const n = duration.toString().toLowerCase().replace(/\s/g, '');
+    let total = 0;
+
+    // Parse hours
+    const hIdx = n.indexOf('h');
+    if (hIdx !== -1) {
+      const hPart = n.substring(0, hIdx);
+      total += parseInt(hPart) * 60;
+      const rest = n.substring(hIdx + 1);
+      // Remove 'min' if present in rest
+      const mPart = rest.replace('min', '');
+      if (mPart) total += parseInt(mPart);
+    } else {
+      // Minutes only
+      const mPart = n.replace('min', '');
+      if (mPart) total += parseInt(mPart);
+    }
+    return isNaN(total) ? 0 : total;
+  };
 
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -75,7 +107,7 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
     const fetchAvailability = async () => {
       let query = supabase
         .from('appointments')
-        .select('time')
+        .select('time, duration')
         .eq('establishment_id', salon.id)
         .eq('date', selectedDate)
         .neq('status', 'cancelled');
@@ -86,7 +118,12 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
 
       const { data } = await query;
       if (data) {
-        setBookedSlots(data.map(a => a.time));
+        const intervals = data.map((a: any) => {
+          const start = timeToMinutes(a.time);
+          const duration = parseDuration(a.duration) || 30; // Default 30 min if missing
+          return { start, end: start + duration };
+        });
+        setBookedIntervals(intervals);
       }
     };
 
@@ -338,7 +375,16 @@ const CustomerBookingWizard: React.FC<CustomerBookingWizardProps> = ({ salon, in
               <h3 className="font-bold text-lg text-slate-900 mb-3">Horários Disponíveis</h3>
               <div className="grid grid-cols-4 gap-3">
                 {TIME_SLOTS.map(time => {
-                  const isBlocked = bookedSlots.includes(time);
+                  const slotStart = timeToMinutes(time);
+                  const serviceDuration = selectedService ? parseDuration(selectedService.duration) : 30;
+                  const slotEnd = slotStart + serviceDuration;
+
+                  // Check if this slot overlaps with any booked interval
+                  // Overlap condition: (StartA < EndB) && (EndA > StartB)
+                  const isBlocked = bookedIntervals.some(appt =>
+                    (slotStart < appt.end) && (slotEnd > appt.start)
+                  );
+
                   return (
                     <button
                       key={time}
