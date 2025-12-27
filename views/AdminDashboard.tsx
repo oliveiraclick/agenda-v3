@@ -107,7 +107,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                <div>
                   <h2 className="text-2xl font-black text-slate-900">
                      {currentView === 'dashboard' && 'Visão Geral'}
-                     {currentView === 'salons' && 'Gerenciar Salões'}
+                     {currentView === 'salons' && 'Gerenciar Clientes'}
                      {currentView === 'users' && 'Usuários'}
                      {currentView === 'settings' && 'Configurações'}
                   </h2>
@@ -143,7 +143,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                            <div className="size-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
                               <span className="material-symbols-outlined">storefront</span>
                            </div>
-                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salões Ativos</span>
+                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Clientes Ativos</span>
                         </div>
                         <p className="text-3xl font-black text-slate-900">{stats.activeSaloons}</p>
                      </div>
