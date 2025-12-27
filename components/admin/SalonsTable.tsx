@@ -39,16 +39,22 @@ const SalonsTable: React.FC = () => {
     };
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o salão "${name}"? Essa ação não pode ser desfeita e apagará todos os dados vinculados.`)) return;
+        if (!confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o cliente "${name}"? Essa ação não pode ser desfeita e apagará todos os dados vinculados.`)) return;
 
+        // Optimistic Update: Remove immediately from UI
+        const previousSalons = [...salons];
+        setSalons(salons.filter(s => s.id !== id));
         setLoading(true);
+
         const { error } = await supabase.from('establishments').delete().eq('id', id);
 
         if (error) {
-            alert('Erro ao excluir salão: ' + error.message);
+            // Revert if failed
+            setSalons(previousSalons);
+            alert('Erro ao excluir cliente: ' + error.message + '\n\nDICA: Verifique se rodou o script de CASCADE no banco de dados.');
         } else {
-            alert('Salão excluído com sucesso.');
-            fetchSalons();
+            alert('Cliente excluído com sucesso.');
+            // No need to fetch again if successful, we already removed it.
         }
         setLoading(false);
     };
@@ -72,7 +78,7 @@ const SalonsTable: React.FC = () => {
 
     const sendPaymentReminder = async (salonName: string, ownerId: string) => {
         if (!ownerId) {
-            alert('Este salão não tem um dono vinculado corretamente.');
+            alert('Este cliente não tem um dono vinculado corretamente.');
             return;
         }
 
@@ -104,12 +110,12 @@ const SalonsTable: React.FC = () => {
     return (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="text-xl font-black text-slate-900">Gerenciar Salões</h2>
+                <h2 className="text-xl font-black text-slate-900">Gerenciar Clientes</h2>
                 <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-[20px]">search</span>
                     <input
                         type="text"
-                        placeholder="Buscar salão..."
+                        placeholder="Buscar cliente..."
                         className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-brand focus:border-transparent outline-none"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -121,7 +127,7 @@ const SalonsTable: React.FC = () => {
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Salão</th>
+                            <th className="px-6 py-4">Cliente</th>
                             <th className="px-6 py-4">Plano</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4">Trial / Vencimento</th>
@@ -148,12 +154,6 @@ const SalonsTable: React.FC = () => {
                                         }`}>
                                         {salon.subscription_plan || 'free'}
                                     </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${salon.status === 'blocked' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-                                        }`}>
-                                        {salon.status || 'active'}
-                                    </span>
                                     {/* @ts-ignore */}
                                     {salon.services?.[0]?.count === 0 && (
                                         <div className="flex items-center gap-1 mt-1 text-amber-500">
@@ -161,6 +161,12 @@ const SalonsTable: React.FC = () => {
                                             <span className="text-[9px] font-bold">Sem Serviços</span>
                                         </div>
                                     )}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${salon.status === 'blocked' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                                        }`}>
+                                        {salon.status || 'active'}
+                                    </span>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="text-xs font-medium text-slate-500">
@@ -195,7 +201,7 @@ const SalonsTable: React.FC = () => {
                                         </button>
                                         <button
                                             onClick={() => handleDelete(salon.id, salon.name)}
-                                            title="Excluir Salão"
+                                            title="Excluir Cliente"
                                             className="size-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">delete</span>

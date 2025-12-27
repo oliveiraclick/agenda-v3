@@ -86,9 +86,11 @@ const AdminTopSalons: React.FC = () => {
     }, []);
 
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <h3 className="font-bold text-slate-900 mb-4">Top Salões (Agendamentos)</h3>
-            <div className="space-y-4">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden h-[300px] flex flex-col">
+            <div className="p-6 pb-2">
+                <h2 className="text-lg font-black text-slate-900">Top Clientes</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-2">
                 {topSalons.map((salon, i) => (
                     <div key={salon.id} className="flex items-center gap-4">
                         <span className={`text-lg font-black ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-400' : 'text-orange-700'}`}>#{i + 1}</span>

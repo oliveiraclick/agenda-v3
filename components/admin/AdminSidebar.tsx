@@ -11,7 +11,7 @@ interface AdminSidebarProps {
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, onNavigate, onLogout }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Visão Geral', icon: 'dashboard' },
-        { id: 'salons', label: 'Salões', icon: 'storefront' },
+        { id: 'salons', label: 'Clientes', icon: 'storefront' },
         { id: 'users', label: 'Usuários', icon: 'group' },
         { id: 'promocodes', label: 'Códigos Promo', icon: 'local_offer' },
         { id: 'settings', label: 'Configurações', icon: 'settings' },
