@@ -114,6 +114,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentView, onNavigate
                   <p className="text-slate-500 text-sm font-medium">Bem-vindo de volta, Chefe.</p>
                </div>
                <div className="flex items-center gap-4">
+                  <button
+                     onClick={handleLogout}
+                     className="max-sm:hidden h-10 px-4 bg-white rounded-full shadow-sm flex items-center gap-2 text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors font-bold text-xs uppercase tracking-wider"
+                     title="Sair do Sistema"
+                  >
+                     <span className="material-symbols-outlined text-lg">logout</span>
+                     <span>Sair</span>
+                  </button>
+
                   <button className="size-10 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 hover:text-primary-brand transition-colors">
                      <span className="material-symbols-outlined">notifications</span>
                   </button>
